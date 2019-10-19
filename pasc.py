@@ -58,14 +58,6 @@ pasc.py
 
    use with -h or --help for help.
 
-
- License: This code may be unconditionally modified, used and redistributed
-          for any private or commercial purpose without limitation.
-
- Warranty: No warranty or guarantee is expressed or implied.
-
- Author: James S. Lucas, Temescal Valley CA - 20191006
-
 """
 
 # ----------------------------START IMPORT SECTION-----------------------------
@@ -116,14 +108,11 @@ local_tz = timezone('US/Pacific')
 # as to avoid issues with the \ escape character.
 
 #user_directory = r' '
-matrix5 = r'd:\Users\James\OneDrive\Documents\House\PurpleAir'
-virtualbox = r'/media/sf_VM_Shared_Files/House/PurpleAir'
-servitor = r'c:\Users\Jim\OneDrive\Documents\House\PurpleAir'
-wsl_ubuntu_matrix5 = r'/mnt/d/Users/James/OneDrive/Documents/House/PurpleAir'
-wsl_ubuntu_servitor = r'/mnt/c/Users/Jim/OneDrive/Documents/House/PurpleAir'
+windows = r'd:\Users\username\Documents\House\PurpleAir'
+linux = r'/media/sf_VM_Shared_Files/House/PurpleAir'
 
 # Change this variable to point to the desired directory above. 
-data_directory = wsl_ubuntu_servitor
+data_directory = linux
 
 csv_root_path = data_directory + os.path.sep
 
@@ -1119,7 +1108,7 @@ def analyze_source(csv_full_path, df_summary):
         status_message("computing sensor bearing and distance.", "yes")
         source_output_filename = csv_full_path + "source.csv"
         df_source2 = df_summary.copy()
-        source_coords = {'Lat': 33.7555312, 'Lon': -117.481027}
+        source_coords = {'Lat': 34.8555312, 'Lon': -116.581037}
 
         df_source2['source_dist'] = df_source2.apply(
             lambda x: haversine_dist(x['Lat'], x['Lon'],
