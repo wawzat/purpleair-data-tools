@@ -98,7 +98,7 @@ local_tz = timezone('US/Pacific')
 # e.g., If the path up to the directory containing your data is
 # c:\data\purple_air and the sub-directory containing the data is sc20190901.
 #
-#    Then you would remove the # and set the user_directory variable to 
+#    Then you would set the user_directory variable to 
 #     user_directory = r'c:\data\purple_air'.
 #    Set the data_directory variable to data_directory = user_directory.
 #    Specify the data directory on the command line.
