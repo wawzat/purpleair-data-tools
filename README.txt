@@ -128,10 +128,6 @@ Python installation requirements
               Fixed bug in summarize() if expected and acutal column names were not in sorted order.
 
 
- License: This code may be unconditionally modified, used and redistributed for any private or commercial purpose without limitation.
- Warranty: No warranty or guarantee is expressed or implied.
- Author: James S. Lucas, Temescal Valley CA - 20190901
-
   Notes for using reference files
      Combines data from downloaded AQMD regulatory stations and station coordinate information into a single file
      Looks for specifically named reference data csv's in the data folder, combines them and appends them to the combined primary data csv file
