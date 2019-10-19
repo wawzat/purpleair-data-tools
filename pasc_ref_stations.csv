@@ -1,0 +1,6 @@
+sensor_name,site_name,AQS_NO,ARB_NO,Lat,Lon,Elev_M,Address,filename_format
+ANAHEIMNR_REF,Anaheim - Near Road,"""060590008""","""30031""",33.81931,-117.91876,46,"812 W. Vermont St, Anaheim CA 92802",ANAHEIMNR_REF_xx.csv 
+ANAMEIMLS_REF,Anaheim - Loara School,"""060590007""","""30178""",33.83061,-117.9385,40,"1630 Pampas Ln, Anaheim CA 92802",ANAMEIMLS_REF_xx.csv 
+LE_REF,Lake Elsinore Area,"""060659001""","""33158""",33.676544,-117.330976,410,"506 W Flint Street, Lake Elsinore CA 92530",LE_REF_xx.csv 
+MISSIONVIEJO_REF,Mission Viejo,"""060592022""","""30002""",33.63005,-117.67588,169,"26081 Via Pera, Mission Viejo CA 92691",MISSIONVIEJO_REF_xx.csv 
+NORCO_REF,Norco/Corona,"""060650003""","""33155""",33.92145,-117.57244,197,"USNFAC Norco, Norco CA 92860",NORCO_REF_xx.csv 
