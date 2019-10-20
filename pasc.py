@@ -57,7 +57,7 @@ pasc.py
              defaults defined in the argument defaults section.
 
    use with -h or --help for help.
-
+20191020
 """
 
 # ----------------------------START IMPORT SECTION-----------------------------
@@ -107,12 +107,17 @@ local_tz = timezone('US/Pacific')
 # Note the r is required before the string to denote it as a raw string so
 # as to avoid issues with the \ escape character.
 
+
 #user_directory = r' '
-windows = r'd:\Users\username\Documents\House\PurpleAir'
-linux = r'/media/sf_VM_Shared_Files/House/PurpleAir'
+matrix5 = r'd:\Users\James\OneDrive\Documents\House\PurpleAir'
+virtualbox = r'/media/sf_VM_Shared_Files/House/PurpleAir'
+servitor = r'c:\Users\Jim\OneDrive\Documents\House\PurpleAir'
+wsl_ubuntu_matrix5 = r'/mnt/d/Users/James/OneDrive/Documents/House/PurpleAir'
+wsl_ubuntu_servitor = r'/mnt/c/Users/Jim/OneDrive/Documents/House/PurpleAir'
 
 # Change this variable to point to the desired directory above. 
-data_directory = linux
+data_directory = wsl_ubuntu_matrix5
+
 
 csv_root_path = data_directory + os.path.sep
 
