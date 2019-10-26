@@ -1136,7 +1136,7 @@ def analyze_source(csv_full_path, df_summary):
         status_message("computing sensor bearing and distance.", "yes")
         source_output_filename = csv_full_path + "source.csv"
         df_source2 = df_summary.copy()
-        source_coords = {'Lat': 34.8555312, 'Lon': -116.581037}
+        source_coords = {'Lat':33.7555312, 'Lon': -117.481027}
 
         df_source2['source_dist'] = df_source2.apply(
             lambda x: haversine_dist(x['Lat'], x['Lon'],
