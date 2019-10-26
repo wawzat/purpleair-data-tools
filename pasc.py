@@ -57,12 +57,12 @@ pasc.py
              defaults defined in the argument defaults section.
 
    use with -h or --help for help.
-20191020
+20191023
 """
 
 # ----------------------------START IMPORT SECTION-----------------------------
 
-#import traceback
+import traceback
 import sys
 import glob
 import os
@@ -116,7 +116,7 @@ wsl_ubuntu_matrix5 = r'/mnt/d/Users/James/OneDrive/Documents/House/PurpleAir'
 wsl_ubuntu_servitor = r'/mnt/c/Users/Jim/OneDrive/Documents/House/PurpleAir'
 
 # Change this variable to point to the desired directory above. 
-data_directory = wsl_ubuntu_matrix5
+data_directory = matrix5
 
 
 csv_root_path = data_directory + os.path.sep
@@ -501,10 +501,10 @@ def combine_primary(args, csv_full_path):
         # sensor names and optionally writes the combined CSV file to disk
         csv_combined_filename = csv_full_path + "combined_full.csv"
         cols = [
-            'DateTime_UTC', 'Sensor', 'PM1.0_CF_ATM_ug/m3',
-            'PM2.5_CF_ATM_ug/m3', 'PM10.0_CF_ATM_ug/m3',
+            'DateTime_UTC', 'Sensor', 'PM1.0_CF1_ug/m3',
+            'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3',
             'Lat', 'Lon', 'UptimeMinutes', 'ADC',
-            'Temperature_F', 'Humidity_%', 'PM2.5_CF_1_ug/m3'
+            'Temperature_F', 'Humidity_%', 'PM2.5_ATM_ug/m3'
             ]
         mapping = ({"created_at": "DateTime_UTC"})
         li = []
@@ -536,9 +536,9 @@ def combine_primary(args, csv_full_path):
                     )
                 dfs = pd.read_csv(filename, index_col=None, header=0)
                 assumed_fieldnames = [
-                    'created_at', 'PM1.0_CF_ATM_ug/m3', 'PM2.5_CF_ATM_ug/m3',
-                    'PM10.0_CF_ATM_ug/m3', 'UptimeMinutes', 'ADC',
-                    'Temperature_F', 'Humidity_%', 'PM2.5_CF_1_ug/m3'
+                    'created_at', 'PM1.0_CF1_ug/m3', 'PM2.5_CF1_ug/m3',
+                    'PM10.0_CF1_ug/m3', 'UptimeMinutes', 'ADC',
+                    'Temperature_F', 'Humidity_%', 'PM2.5_ATM_ug/m3'
                     ]
                 actual_fieldnames = dfs.columns.values.tolist()
                 actual_fieldnames = [
@@ -554,6 +554,29 @@ def combine_primary(args, csv_full_path):
                         s.replace('ADC', 'RSSI_dbm') for s in assumed_fieldnames
                         ]
                     dfs = dfs.rename(columns={"RSSI_dbm": "ADC"})
+                if "PM1.0_CF_ATM_ug/m3" in actual_fieldnames:
+                    assumed_fieldnames = [
+                        s.replace('PM1.0_CF1_ug/m3', 'PM1.0_CF_ATM_ug/m3') for s in assumed_fieldnames
+                        ]
+                    dfs = dfs.rename(columns={"PM1.0_CF_ATM_ug/m3": "PM1.0_CF1_ug/m3"})
+                if "PM2.5_CF_ATM_ug/m3" in actual_fieldnames:
+                    assumed_fieldnames = [
+                        s.replace('PM2.5_CF1_ug/m3', 'PM2.5_CF_ATM_ug/m3') for s in assumed_fieldnames
+                        ]
+                    dfs = dfs.rename(columns={"PM2.5_CF_ATM_ug/m3": "PM2.5_CF1_ug/m3"})
+                if "PM10.0_CF_ATM_ug/m3" in actual_fieldnames:
+                    assumed_fieldnames = [
+                        s.replace('PM10.0_CF1_ug/m3', 'PM10.0_CF_ATM_ug/m3') for s in assumed_fieldnames
+                        ]
+                    dfs = dfs.rename(columns={"PM10.0_CF_ATM_ug/m3": "PM10.0_CF1_ug/m3"})
+                if "PM2.5_CF_1_ug/m3" in actual_fieldnames:
+                    assumed_fieldnames = [
+                        s.replace('PM2.5_ATM_ug/m3', 'PM2.5_CF_1_ug/m3') for s in assumed_fieldnames
+                        ]
+                    dfs = dfs.rename(columns={"PM2.5_CF_1_ug/m3": "PM2.5_ATM_ug/m3"})
+                #'created_at', 'PM1.0_CF_ATM_ug/m3', 'PM2.5_CF_ATM_ug/m3',
+                #'PM10.0_CF_ATM_ug/m3', 'UptimeMinutes', 'ADC',
+                #'Temperature_F', 'Humidity_%', 'PM2.5_CF_1_ug/m3'
                 if sorted(actual_fieldnames) != sorted(assumed_fieldnames):
                     print(" ")
                     print(" ")
@@ -646,7 +669,7 @@ def combine_reference(local_tz, args, csv_full_path,
         value_names = {
                 "wd": "WindDirection",
                 "ws": "WindSpeed",
-                "25": "PM2.5_CF_ATM_ug/m3",
+                "25": "PM2.5_CF1_ug/m3",
                 "te": "Temperature_F"
                 }
         dfs = []
@@ -757,10 +780,10 @@ def combine_reference(local_tz, args, csv_full_path,
             df_merged_ref.index = df_merged_ref.index.tz_localize(None)
             df_merged_ref.reset_index(inplace=True)
             cols=([
-                'DateTime_UTC', 'Sensor', 'PM1.0_CF_ATM_ug/m3',
-                'PM2.5_CF_ATM_ug/m3', 'PM10.0_CF_ATM_ug/m3',
+                'DateTime_UTC', 'Sensor', 'PM1.0_CF1_ug/m3',
+                'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3',
                 'Lat', 'Lon', 'UptimeMinutes', 'ADC',
-                'Temperature_F', 'Humidity_%', 'PM2.5_CF_1_ug/m3'
+                'Temperature_F', 'Humidity_%', 'PM2.5_ATM_ug/m3'
                 ])
             df_merged_ref = df_merged_ref.reindex(columns=cols, copy=False)
             df_combined_primary = df_combined_primary.append(df_merged_ref)
@@ -896,7 +919,7 @@ def summarize(local_tz, args, output_type,
         #df3 is used for the summary output files
         df3 = df3.reset_index()                  
         # filter PM2.5 between 0-1000
-        df3 = df3[df3['PM2.5_CF_ATM_ug/m3'].between(0, 1000, inclusive=True)]  
+        df3 = df3[df3['PM2.5_CF1_ug/m3'].between(0, 1000, inclusive=True)]  
         df3.rename(columns={"DateTime_UTC": datetime_col_name}, inplace=True)
         if args.darksky:
             df3 = df3.merge(df_dsky, how='left', on=datetime_col_name)
@@ -962,11 +985,11 @@ def summarize(local_tz, args, output_type,
                 "yes"
                 )
         df_raw_stats = (
-            df['PM2.5_CF_ATM_ug/m3']
+            df['PM2.5_CF1_ug/m3']
             .describe().apply(lambda x: format(x, '.2f'))
             )
         df_summary_stats = (
-            df3['PM2.5_CF_ATM_ug/m3']
+            df3['PM2.5_CF1_ug/m3']
             .describe().apply(lambda x: format(x, '.2f'))
             )
         df_stats = pd.concat(
@@ -982,9 +1005,9 @@ def summarize(local_tz, args, output_type,
                     "Lon": "EAST_LONGITUDE(deg)",
                     "Lat": "NORTH_LATITUDE(deg)",
                     "Sensor": "ID(-)",
-                    "PM1.0_CF_ATM_ug/m3": "PM1.0",
-                    "PM2.5_CF_ATM_ug/m3": "PM2.5",
-                    "PM10.0_CF_ATM_ug/m3": "PM10.0",
+                    "PM1.0_CF1_ug/m3": "PM1.0",
+                    "PM2.5_CF1_ug/m3": "PM2.5",
+                    "PM10.0_CF1_ug/m3": "PM10.0",
                     "Temperature_F": "Temperature",
                     "Humidity_%": "Relative Humidity",
                     "WindSpeed": "wind_magnitude(m/s)",
@@ -1002,9 +1025,9 @@ def summarize(local_tz, args, output_type,
                     "Lon": "EAST_LONGITUDE(deg)",
                     "Lat": "NORTH_LATITUDE(deg)",
                     "Sensor": "ID(-)",
-                    "PM1.0_CF_ATM_ug/m3": "PM1.0",
-                    "PM2.5_CF_ATM_ug/m3": "PM2.5",
-                    "PM10.0_CF_ATM_ug/m3": "PM10.0",
+                    "PM1.0_CF1_ug/m3": "PM1.0",
+                    "PM2.5_CF1_ug/m3": "PM2.5",
+                    "PM10.0_CF1_ug/m3": "PM10.0",
                     "Temperature_F": "Temperature",
                     "Humidity_%": "Relative Humidity"
                     })
@@ -1014,7 +1037,7 @@ def summarize(local_tz, args, output_type,
                     'Relative Humidity'
                     ])
             df3 = df3.rename(columns=mapping)
-            df3 = df3.drop(["UptimeMinutes", "ADC", "PM2.5_CF_1_ug/m3"], axis=1)
+            df3 = df3.drop(["UptimeMinutes", "ADC", "PM2.5_ATM_ug/m3"], axis=1)
             df3 = df3[cols]
             df3 = df3.drop([
                 "PM1.0", "PM10.0",
@@ -1043,7 +1066,7 @@ def summarize(local_tz, args, output_type,
     except Exception as e:
         print(" ")
         print("error in summarize() function: %s" % e)
-        #traceback.print_exc(file=sys.stdout)
+        traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 
 
@@ -1056,12 +1079,12 @@ def df_plot(args, sensor_name, df):
         df2 = df.groupby('Sensor')
         df3 = df2.resample(args.summary).mean()
         df3 = df3.drop([
-            "Lon", "Lat", "PM1.0_CF_ATM_ug/m3",
-            "PM10.0_CF_ATM_ug/m3", "Temperature_F",
+            "Lon", "Lat", "PM1.0_CF1_ug/m3",
+            "PM10.0_CF1_ug/m3", "Temperature_F",
             "Humidity_%"
             ],
             axis=1)
-        mapping = {"PM2.5_CF_ATM_ug/m3": "PM2.5"}
+        mapping = {"PM2.5_CF1_ug/m3": "PM2.5"}
         df3 = df3.rename(columns=mapping)
         df3 = df3.reset_index()
         cols = ['Timestamp', 'Sensor', 'PM2.5']
