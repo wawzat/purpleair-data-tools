@@ -57,12 +57,12 @@ pasc.py
              defaults defined in the argument defaults section.
 
    use with -h or --help for help.
-20191023
+20191026
 """
 
 # ----------------------------START IMPORT SECTION-----------------------------
 
-import traceback
+#import traceback
 import sys
 import glob
 import os
@@ -116,10 +116,7 @@ wsl_ubuntu_matrix5 = r'/mnt/d/Users/James/OneDrive/Documents/House/PurpleAir'
 wsl_ubuntu_servitor = r'/mnt/c/Users/Jim/OneDrive/Documents/House/PurpleAir'
 
 # Change this variable to point to the desired directory above. 
-data_directory = matrix5
-
-
-csv_root_path = data_directory + os.path.sep
+data_directory = wsl_ubuntu_matrix5
 
 # Argument Defaults: Used in the get_arguments function.
 directory_default = "Test3"
@@ -128,6 +125,7 @@ output_default = ["csv", "retigo"]
 
 # ------------------------END USER VARIABLES SECTION---------------------------
 
+csv_root_path = data_directory + os.path.sep
 
 def get_ref_station_coordinates():
     # Get AQMD regulatory reference station information from the 
@@ -500,12 +498,16 @@ def combine_primary(args, csv_full_path):
         # Combines data from the sensor CSV files, adds sensor coordinates and
         # sensor names and optionally writes the combined CSV file to disk
         csv_combined_filename = csv_full_path + "combined_full.csv"
-        cols = [
-            'DateTime_UTC', 'Sensor', 'PM1.0_CF1_ug/m3',
-            'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3',
-            'Lat', 'Lon', 'UptimeMinutes', 'ADC',
-            'Temperature_F', 'Humidity_%', 'PM2.5_ATM_ug/m3'
-            ]
+        pa_version3 = [
+                "created_at", "entry_id", "PM1.0_CF1_ug/m3", 
+                "PM2.5_CF1_ug/m3", "PM10.0_CF1_ug/m3",
+                "UptimeMinutes", "ADC", "Temperature_F",
+                "Humidity_%", "PM2.5_ATM_ug/m3"
+                ]
+        cols = [x if x != "created_at" else "DateTime_UTC" for x in pa_version3]
+        cols.insert(1, "Sensor")
+        cols.insert(5, "Lat")
+        cols.insert(6, "Lon")
         mapping = ({"created_at": "DateTime_UTC"})
         li = []
         if glob.glob(os.path.join(csv_full_path, "*Primary*.csv")):
@@ -535,67 +537,26 @@ def combine_primary(args, csv_full_path):
                     filename, csv_full_path
                     )
                 dfs = pd.read_csv(filename, index_col=None, header=0)
-                assumed_fieldnames = [
-                    'created_at', 'PM1.0_CF1_ug/m3', 'PM2.5_CF1_ug/m3',
-                    'PM10.0_CF1_ug/m3', 'UptimeMinutes', 'ADC',
-                    'Temperature_F', 'Humidity_%', 'PM2.5_ATM_ug/m3'
-                    ]
-                actual_fieldnames = dfs.columns.values.tolist()
-                actual_fieldnames = [
-                    x for x in actual_fieldnames if not x.startswith('Unnamed')
-                    ]
-                if ("entry_id" in actual_fieldnames and
-                        "entry_id" not in assumed_fieldnames):
-                    assumed_fieldnames.insert(1, 'entry_id')
-                if '' in actual_fieldnames:
-                    actual_fieldnames.remove('')
-                if "RSSI_dbm" in actual_fieldnames:
-                    assumed_fieldnames = [
-                        s.replace('ADC', 'RSSI_dbm') for s in assumed_fieldnames
-                        ]
-                    dfs = dfs.rename(columns={"RSSI_dbm": "ADC"})
-                if "PM1.0_CF_ATM_ug/m3" in actual_fieldnames:
-                    assumed_fieldnames = [
-                        s.replace('PM1.0_CF1_ug/m3', 'PM1.0_CF_ATM_ug/m3') for s in assumed_fieldnames
-                        ]
-                    dfs = dfs.rename(columns={"PM1.0_CF_ATM_ug/m3": "PM1.0_CF1_ug/m3"})
-                if "PM2.5_CF_ATM_ug/m3" in actual_fieldnames:
-                    assumed_fieldnames = [
-                        s.replace('PM2.5_CF1_ug/m3', 'PM2.5_CF_ATM_ug/m3') for s in assumed_fieldnames
-                        ]
-                    dfs = dfs.rename(columns={"PM2.5_CF_ATM_ug/m3": "PM2.5_CF1_ug/m3"})
-                if "PM10.0_CF_ATM_ug/m3" in actual_fieldnames:
-                    assumed_fieldnames = [
-                        s.replace('PM10.0_CF1_ug/m3', 'PM10.0_CF_ATM_ug/m3') for s in assumed_fieldnames
-                        ]
-                    dfs = dfs.rename(columns={"PM10.0_CF_ATM_ug/m3": "PM10.0_CF1_ug/m3"})
-                if "PM2.5_CF_1_ug/m3" in actual_fieldnames:
-                    assumed_fieldnames = [
-                        s.replace('PM2.5_ATM_ug/m3', 'PM2.5_CF_1_ug/m3') for s in assumed_fieldnames
-                        ]
-                    dfs = dfs.rename(columns={"PM2.5_CF_1_ug/m3": "PM2.5_ATM_ug/m3"})
-                #'created_at', 'PM1.0_CF_ATM_ug/m3', 'PM2.5_CF_ATM_ug/m3',
-                #'PM10.0_CF_ATM_ug/m3', 'UptimeMinutes', 'ADC',
-                #'Temperature_F', 'Humidity_%', 'PM2.5_CF_1_ug/m3'
-                if sorted(actual_fieldnames) != sorted(assumed_fieldnames):
-                    print(" ")
-                    print(" ")
-                    print(sorted(assumed_fieldnames))
-                    print(sorted(actual_fieldnames))
-                    differences = str(set(assumed_fieldnames)
-                                      - set(actual_fieldnames)
-                                      )
-                    print("difference: " + differences[4:len(differences)-1])
-                    raise ValueError ("actual fieldnames are different than"
-                                      " assumed fieldnames. exiting."
-                                      )
-                dfs['created_at'] = (
-                    dfs['created_at'].apply(lambda x: x.rstrip(' UTC'))
-                    )
-                dfs['Sensor'] = tag_number
-                dfs['Lat'] = float(LAT_coord)
-                dfs['Lon'] = float(LON_coord)
-                li.append(dfs)
+                if not dfs.empty:
+                    actual_fieldnames = dfs.columns.values.tolist()
+                    # Create a dictionary of actual column names : column names 
+                    # used in the Oct 2019 purpleair data naming convention.
+                    fieldnames_dict = dict(zip(actual_fieldnames, pa_version3))
+                    # Drop 'unnamed' column.
+                    dfs = dfs.dropna(how='all', axis='columns')
+                    # Rename columns to the column names used in 
+                    # the Oct 2019 purpleair data naming convention.
+                    dfs = dfs.rename(columns=fieldnames_dict)
+                    dfs['created_at'] = (
+                        dfs['created_at'].apply(lambda x: x.rstrip(' UTC'))
+                        )
+                    # Insert the Sensor, Lat and Lon values.
+                    dfs['Sensor'] = tag_number
+                    dfs['Lat'] = float(LAT_coord)
+                    dfs['Lon'] = float(LON_coord)
+                    # A data frame for each sensor file is 
+                    # added to a list to be concatenated.
+                    li.append(dfs)
             status_message(
                     "completed reading primary files: processed "
                     + str(combined_count)
@@ -606,7 +567,6 @@ def combine_primary(args, csv_full_path):
                     )
             status_message("combining primary files.", "no")
             df_combined_primary = pd.concat(li, axis=0, sort=True)
-            #print(df_combined_primary)
             df_combined_primary = df_combined_primary.rename(columns=mapping)
             df_combined_primary = df_combined_primary[cols]
             df_combined_primary['DateTime_UTC'] = (
@@ -646,6 +606,7 @@ def combine_primary(args, csv_full_path):
     except Exception as e:
         print(" ")
         print("error in combine_primary() function: %s" % e)
+        #traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 
 
@@ -786,7 +747,7 @@ def combine_reference(local_tz, args, csv_full_path,
                 'Temperature_F', 'Humidity_%', 'PM2.5_ATM_ug/m3'
                 ])
             df_merged_ref = df_merged_ref.reindex(columns=cols, copy=False)
-            df_combined_primary = df_combined_primary.append(df_merged_ref)
+            df_combined_primary = df_combined_primary.append(df_merged_ref, sort=True)
             if args.full:
                 with open(csv_combined_filename, "w") as reference:
                     status_message("writing combined_full.csv file.", "no")
@@ -1066,7 +1027,7 @@ def summarize(local_tz, args, output_type,
     except Exception as e:
         print(" ")
         print("error in summarize() function: %s" % e)
-        traceback.print_exc(file=sys.stdout)
+        #traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 
 
@@ -1114,12 +1075,14 @@ def df_plot(args, sensor_name, df):
 
 
 def sensor_stats(csv_full_path, df):
+    print("calculating sensor statistics.")
+    print(" ")
     stats_output_filename = csv_full_path + 'sensor_stats.csv'
     df_stats = df.copy()
-    #print(df_stats)
     df_stats.reset_index(inplace=True)
     df_stats = df_stats.sort_values('DateTime_UTC').groupby('Sensor')['DateTime_UTC'].agg(['first','last'])
     print(df_stats)
+    print(" ")
     df_stats.to_csv(
             stats_output_filename,
             index=True,
@@ -1136,7 +1099,7 @@ def analyze_source(csv_full_path, df_summary):
         status_message("computing sensor bearing and distance.", "yes")
         source_output_filename = csv_full_path + "source.csv"
         df_source2 = df_summary.copy()
-        source_coords = {'Lat':33.7555312, 'Lon': -117.481027}
+        source_coords = {'Lat': 33.7555312, 'Lon': -117.481027}
 
         df_source2['source_dist'] = df_source2.apply(
             lambda x: haversine_dist(x['Lat'], x['Lon'],
@@ -1249,11 +1212,11 @@ else:
                 df_combined_primary,
                 date_range
                 )
-        if args.plot:
-            df_plot(args, sensor_name, df)
         if args.stats:
             sensor_stats(csv_full_path, df)
         if args.source:
             analyze_source(csv_full_path, df_summary)
+        if args.plot:
+            df_plot(args, sensor_name, df)
     elif proceed == "n":
         print("exiting without changes.")
