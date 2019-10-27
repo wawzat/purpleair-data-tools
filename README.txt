@@ -105,7 +105,6 @@ Python installation requirements
  Todo: Convert to Python class
  Todo: Add regional grouping functionality?
  Todo: Additional Pandas analysis, Pandas matplotlib Plots and/or Excel Charts (via XlsxWriter).
- Todo: Minimize potential for conflicting arguments.
  Todo: Auto archive previous output files?
  Todo: Set preferences such as data path, time zone etc from command line and store in config file?
  Todo: Currently dropping various rows with nulls in retigo output, is there a better way?
@@ -126,6 +125,8 @@ Python installation requirements
     20190901: Now runs on both Python 2.7.16 and Python 3.6.8.
     20190928: Fixed bug in summarize() where darksky date filter would error if sensor times were not in darksky times.
               Fixed bug in summarize() if expected and acutal column names were not in sorted order.
+    20191026: Improved handling of dataframe column naming to prevent potential issues with PurpleAir
+              changing column names.
 
 
   Notes for using reference files
