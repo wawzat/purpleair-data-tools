@@ -541,15 +541,9 @@ def combine_primary(args, csv_full_path):
                 if not dfs.empty:
                     actual_fieldnames = dfs.columns.values.tolist()
                     actual_fieldnames_sorted = sorted(actual_fieldnames)
-                    print(" ")
-                    print(pa_version3)
-                    print(pa_version3_sorted)
-                    print(actual_fieldnames)
-                    print(actual_fieldnames_sorted)
                     # Create a dictionary of actual column names : column names 
                     # used in the Oct 2019 purpleair data naming convention.
                     fieldnames_dict = dict(zip(actual_fieldnames_sorted, pa_version3_sorted))
-                    print(fieldnames_dict)
                     # Drop 'unnamed' column.
                     dfs = dfs.dropna(how='all', axis='columns')
                     # Rename columns to the column names used in 
