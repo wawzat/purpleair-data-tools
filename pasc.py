@@ -57,7 +57,7 @@ pasc.py
              defaults defined in the argument defaults section.
 
    use with -h or --help for help.
-20191026
+20191028
 """
 
 # ----------------------------START IMPORT SECTION-----------------------------
@@ -504,6 +504,7 @@ def combine_primary(args, csv_full_path):
                 "UptimeMinutes", "ADC", "Temperature_F",
                 "Humidity_%", "PM2.5_ATM_ug/m3"
                 ]
+        pa_version3_sorted = sorted(pa_version3)
         cols = [x if x != "created_at" else "DateTime_UTC" for x in pa_version3]
         cols.insert(1, "Sensor")
         cols.insert(5, "Lat")
@@ -539,9 +540,16 @@ def combine_primary(args, csv_full_path):
                 dfs = pd.read_csv(filename, index_col=None, header=0)
                 if not dfs.empty:
                     actual_fieldnames = dfs.columns.values.tolist()
+                    actual_fieldnames_sorted = sorted(actual_fieldnames)
+                    print(" ")
+                    print(pa_version3)
+                    print(pa_version3_sorted)
+                    print(actual_fieldnames)
+                    print(actual_fieldnames_sorted)
                     # Create a dictionary of actual column names : column names 
                     # used in the Oct 2019 purpleair data naming convention.
-                    fieldnames_dict = dict(zip(actual_fieldnames, pa_version3))
+                    fieldnames_dict = dict(zip(actual_fieldnames_sorted, pa_version3_sorted))
+                    print(fieldnames_dict)
                     # Drop 'unnamed' column.
                     dfs = dfs.dropna(how='all', axis='columns')
                     # Rename columns to the column names used in 
