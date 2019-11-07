@@ -7,7 +7,9 @@ pasc.py
     Iterates over all PurpleAir "primary" sensor csv files located in a user 
       specified data directory and combines them into files in various formats
       with re-ordered columns, UTC datetime conversion and 
-      sensor LAT/LON coordinates.
+      sensor LAT/LON coordinates. The PM2.5 "AQI" is calculated using the EPA calculation
+      but based on a 24 hour rolling average rather than midnight to midnight so this
+      is not an official methodology. The value is stored in the Ipm25 column.
 
       AQS / ARB Reference sensor and/or darksky wind data may also be
          optionally included.
@@ -57,7 +59,7 @@ pasc.py
              defaults defined in the argument defaults section.
 
    use with -h or --help for help.
-20191028
+20191106
 """
 
 # ----------------------------START IMPORT SECTION-----------------------------
@@ -104,8 +106,8 @@ local_tz = timezone('US/Pacific')
 #    Specify the data directory on the command line.
 #       i.e., python pasc.py -d sc20190901
 #
-# Note the r is required before the string to denote it as a raw string so
-# as to avoid issues with the \ escape character.
+# Note the r is required before the string to denote it as a raw string
+# to avoid issues with the \ escape character.
 
 
 #user_directory = r' '
@@ -197,7 +199,7 @@ def status_message(output_message, newline):
     if newline == "yes":
         stdout.write(
                 "\r" + output_message 
-                + "                                                           "
+                + "                                           "
                 )
         stdout.flush()
         stdout.write("\n")
@@ -205,7 +207,7 @@ def status_message(output_message, newline):
         stdout.write(
                 "\r" 
                 + output_message 
-                + "                                                           "
+                + "                                           "
                 )
         stdout.flush()
 
@@ -359,7 +361,7 @@ def existing_output_files_check(args, output_type, csv_full_path):
     # Check if output files already exist, display the file names,
     # warn the user and allow the user to cancel. This is included in case
     # you have performed additional analysis on an existing output file and
-    # don't want to lose your work.
+    # don't want to overwrite and lose your work.
     csv_combined_filename = "combined_full.csv"
     xl_output_filename = "combined_summarized_xl.xlsx"
     csv_output_filename = "combined_summarized_csv.csv"
@@ -452,8 +454,8 @@ def parse_path(filename, csv_full_path):
         print(str(e) + " for " + filename)
         print(
             "ensure filename has a space after the sensor name"
-            " and/or a space between"
-            " and/or () surrounding the lat/lon coordinates"
+            " and a space between"
+            " and () surrounding the lat/lon coordinates"
             )
         print(
             "example:"
@@ -493,6 +495,58 @@ def get_summary_interval(args):
         sys.exit(1)
 
 
+def calc_aqi(PM2_5):
+    # Function takes the 24-hour rolling average PM2.5 value and calculates
+    # "AQI". "AQI" in quotes as this is not an official methodology. AQI is 
+    # 24 hour midnight-midnight average. May change to NowCast or other
+    # methodology in the future.
+
+    # Truncate to one decimal place.
+    PM2_5 = int(PM2_5 * 10) / 10.0
+    if PM2_5 < 0:
+        PM2_5 = 0
+    #AQI breakpoints [0,    1,     2,    3    ]
+    #                [Ilow, Ihigh, Clow, Chigh]
+    pm25_aqi = {
+        'good': [0, 50, 0, 12],
+        'moderate': [51, 100, 12.1, 35.4],
+        'sensitive': [101, 150, 33.5, 55.4],
+        'unhealthy': [151, 200, 55.5, 150.4],
+        'very': [201, 300, 150.5, 250.4],
+        'hazardous': [301, 500, 250.5, 500.4],
+        'beyond_aqi': [301, 500, 250.5, 500.4]
+        }
+    try:
+        if (0.0 <= PM2_5 <= 12.0):
+            aqi_cat = 'good'
+        elif (12.1 <= PM2_5 <= 35.4):
+            aqi_cat = 'moderate'
+        elif (33.5 <= PM2_5 <= 55.4):
+            aqi_cat = 'sensitive'
+        elif (55.5 <= PM2_5 <= 150.4):
+            aqi_cat = 'unhealthy'
+        elif (150.5 <= PM2_5 <= 250.4):
+            aqi_cat = 'very'
+        elif (250.5 <= PM2_5 <= 500.4):
+            aqi_cat = 'hazardous'
+        elif (PM2_5 >= 500.5):
+            aqi_cat = 'beyond_aqi'
+        else:
+            print(" ")
+            print("PM2_5: " + str(PM2_5))
+        Ihigh = pm25_aqi.get(aqi_cat)[1]
+        Ilow = pm25_aqi.get(aqi_cat)[0]
+        Chigh = pm25_aqi.get(aqi_cat)[3]
+        Clow = pm25_aqi.get(aqi_cat)[2]
+        Ipm25 = int(round(
+            ((Ihigh - Ilow) / (Chigh - Clow) * (PM2_5 - Clow) + Ilow)
+            ))
+        return Ipm25
+    except Exception as e:
+        pass
+        print("error in calc_aqi() function: %s") % e
+
+
 def combine_primary(args, csv_full_path):
     try:
         # Combines data from the sensor CSV files, adds sensor coordinates and
@@ -509,6 +563,7 @@ def combine_primary(args, csv_full_path):
         cols.insert(1, "Sensor")
         cols.insert(5, "Lat")
         cols.insert(6, "Lon")
+        cols.insert(15, "Ipm25")
         mapping = ({"created_at": "DateTime_UTC"})
         li = []
         if glob.glob(os.path.join(csv_full_path, "*Primary*.csv")):
@@ -519,7 +574,8 @@ def combine_primary(args, csv_full_path):
                     if "Primary" in name.split():
                         combined_size += getsize(join(root, name))
                         combined_count += 1
-                break               # don't walk files in subdirectories
+                # don't walk files in subdirectories
+                break
             remaining_size = combined_size
             remaining_count = combined_count
             filenames = os.path.join(csv_full_path, "*Primary*.csv")
@@ -539,13 +595,16 @@ def combine_primary(args, csv_full_path):
                     )
                 dfs = pd.read_csv(filename, index_col=None, header=0)
                 if not dfs.empty:
+                    # Drop 'unnamed' column.
+                    dfs = dfs.dropna(how='all', axis='columns')
+                    # Get list of dfs column names
                     actual_fieldnames = dfs.columns.values.tolist()
                     actual_fieldnames_sorted = sorted(actual_fieldnames)
                     # Create a dictionary of actual column names : column names 
                     # used in the Oct 2019 purpleair data naming convention.
-                    fieldnames_dict = dict(zip(actual_fieldnames_sorted, pa_version3_sorted))
-                    # Drop 'unnamed' column.
-                    dfs = dfs.dropna(how='all', axis='columns')
+                    fieldnames_dict = dict(
+                        zip(actual_fieldnames_sorted, pa_version3_sorted)
+                        )
                     # Rename columns to the column names used in 
                     # the Oct 2019 purpleair data naming convention.
                     dfs = dfs.rename(columns=fieldnames_dict)
@@ -556,6 +615,21 @@ def combine_primary(args, csv_full_path):
                     dfs['Sensor'] = tag_number
                     dfs['Lat'] = float(LAT_coord)
                     dfs['Lon'] = float(LON_coord)
+
+                    # EXPERIMENTAL: Added for AQI calculation 
+                    # For clarity may move most of this to calc_aqi()
+                    df_AQI = dfs[['created_at', 'PM2.5_CF1_ug/m3']].copy()
+                    df_AQI['created_at'] = pd.to_datetime(df_AQI['created_at'])
+                    df_AQI.set_index('created_at', inplace=True)
+                    df_AQI['PM2.5_avg'] = df_AQI.rolling('24H').mean()
+                    df_AQI.reset_index(inplace=True)
+                    df_AQI.index = dfs.index
+                    df_AQI['Ipm25'] = df_AQI.apply(
+                        lambda x: calc_aqi(x['PM2.5_avg']),
+                        axis=1
+                        )
+                    dfs['Ipm25'] = df_AQI['Ipm25']
+
                     # A data frame for each sensor file is 
                     # added to a list to be concatenated.
                     li.append(dfs)
@@ -593,7 +667,7 @@ def combine_primary(args, csv_full_path):
                     status_message("writing combined_full.csv file."
                                    "combine_primary()", "no"
                                    )
-                    df_combined_primary.to_csv(
+                    df_combined_primary[cols].to_csv(
                         reference, index=False, date_format='%Y-%m-%d %H:%M:%S'
                         )
                     status_message("completed writing combined_full.csv file.",
@@ -636,7 +710,7 @@ def combine_reference(local_tz, args, csv_full_path,
                 "te": "Temperature_F"
                 }
         dfs = []
-        # Determine number of combined size of reference files.
+        # Determine number of and combined size of reference files.
         if glob.glob(os.path.join(csv_full_path, "*REF*.csv")):
             combined_size = 0
             combined_count = 0
@@ -651,7 +725,8 @@ def combine_reference(local_tz, args, csv_full_path,
                             wind_files_count += 1
                         if names[0].find("ws") != -1:
                             wind_files_count += 1
-                break               # don't walk files in subdirectories
+                # Don't walk files in subdirectories
+                break
             remaining_size = combined_size
             remaining_count = combined_count
             # Build a list of dataframes from the reference files, merge
@@ -743,13 +818,31 @@ def combine_reference(local_tz, args, csv_full_path,
             df_merged_ref.index = df_merged_ref.index.tz_localize(None)
             df_merged_ref.reset_index(inplace=True)
             cols=([
-                'DateTime_UTC', 'Sensor', 'PM1.0_CF1_ug/m3',
-                'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3',
-                'Lat', 'Lon', 'UptimeMinutes', 'ADC',
-                'Temperature_F', 'Humidity_%', 'PM2.5_ATM_ug/m3'
+                'Sensor', 'DateTime_UTC', 'PM1.0_CF1_ug/m3',
+                'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
+                'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'ADC', 
+                'Temperature_F', 'Humidity_%'
                 ])
             df_merged_ref = df_merged_ref.reindex(columns=cols, copy=False)
-            df_combined_primary = df_combined_primary.append(df_merged_ref, sort=True)
+            # Calculate AQI
+            # For clarity may move most of this to calc_aqi()
+            df_AQI = df_merged_ref[['DateTime_UTC', 'PM2.5_CF1_ug/m3']].copy()
+            df_AQI['DateTime_UTC'] = pd.to_datetime(df_AQI['DateTime_UTC'])
+            df_AQI.set_index('DateTime_UTC', inplace=True)
+            df_AQI['PM2.5_avg'] = df_AQI.rolling('24H').mean()
+            df_AQI.reset_index(inplace=True)
+            df_AQI.index = df_merged_ref.index
+            df_AQI['Ipm25'] = df_AQI.apply(
+                lambda x: calc_aqi(x['PM2.5_avg']),
+                axis=1
+                )
+            df_merged_ref['Ipm25'] = df_AQI['Ipm25']
+            df_combined_primary = df_combined_primary.append(
+                df_merged_ref, sort=True
+                )
+            df_combined_primary['Ipm25'] = df_combined_primary['Ipm25'].fillna(0)
+            df_combined_primary['Ipm25'] = df_combined_primary['Ipm25'].astype(int)
+            # Optionally write full unsummarized dataframe to disk
             if args.full:
                 with open(csv_combined_filename, "w") as reference:
                     status_message("writing combined_full.csv file.", "no")
@@ -776,6 +869,7 @@ def combine_reference(local_tz, args, csv_full_path,
         print(" ")
         print(" error in combine_reference().")
         print(e)
+        #traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 
 
@@ -884,10 +978,32 @@ def summarize(local_tz, args, output_type,
         # filter PM2.5 between 0-1000
         df3 = df3[df3['PM2.5_CF1_ug/m3'].between(0, 1000, inclusive=True)]  
         df3.rename(columns={"DateTime_UTC": datetime_col_name}, inplace=True)
+        df3['Ipm25'] = df3['Ipm25'].astype(int)
+        cols=([
+            'Sensor', datetime_col_name, 'PM1.0_CF1_ug/m3',
+            'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
+            'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'ADC', 
+            'Temperature_F', 'Humidity_%'
+            ])
         if args.darksky:
             df3 = df3.merge(df_dsky, how='left', on=datetime_col_name)
+            cols=([
+                'Sensor', datetime_col_name, 'PM1.0_CF1_ug/m3',
+                'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
+                'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'ADC', 
+                'Temperature_F', 'Humidity_%', 'WindDirection',
+                'WindSpeed'
+                ])
         elif sensor_name != " " and args.wind:
             df3 = df3.merge(df_wind, how='left', on=datetime_col_name)
+            cols=([
+                'Sensor', datetime_col_name, 'PM1.0_CF1_ug/m3',
+                'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
+                'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'ADC', 
+                'Temperature_F', 'Humidity_%', 'WindDirection',
+                'WindSpeed'
+                ])
+        df3 = df3[cols]
         df_summary = df3.copy()
         status_message("completed summarizing data.", "yes")
         if "xl" in output_type:
@@ -898,6 +1014,7 @@ def summarize(local_tz, args, output_type,
                     )
         else:
             status_message("processing output files.", "no")
+        # Write output files to disk.
         # csv format
         if "csv" in output_type or "all" in output_type:
             df3.to_csv(
@@ -924,19 +1041,22 @@ def summarize(local_tz, args, output_type,
             format1 = workbook.add_format({'num_format': 'Y-m-d h:mm:ss'})
             format2 = workbook.add_format({'num_format': '#,##0.00'})
             format3 = workbook.add_format({'num_format': '#,##0.000000'})
+            format4 = workbook.add_format({'num_format': '#,##0'})
+            worksheet.set_column('A:A', 9, format2)
             worksheet.set_column('B:B', 22, format1)
-            worksheet.set_column('C:C', 23, format2)
-            worksheet.set_column('D:D', 23, format2)
-            worksheet.set_column('E:E', 23, format2)
-            worksheet.set_column('F:F', 13, format3)
-            worksheet.set_column('G:G', 13, format3)
-            worksheet.set_column('H:H', 18, format2)
-            worksheet.set_column('I:I', 12, format2)
+            worksheet.set_column('C:C', 21, format2)
+            worksheet.set_column('D:D', 21, format2)
+            worksheet.set_column('E:E', 21, format2)
+            worksheet.set_column('F:F', 21, format2)
+            worksheet.set_column('G:G', 8, format4)
+            worksheet.set_column('H:H', 8, format2)
+            worksheet.set_column('I:I', 8, format2)
             worksheet.set_column('J:J', 16, format2)
-            worksheet.set_column('K:K', 16, format2)
-            worksheet.set_column('L:L', 23, format2)
-            worksheet.set_column('M:M', 15, format2)
+            worksheet.set_column('K:K', 10, format2)
+            worksheet.set_column('L:L', 16, format2)
+            worksheet.set_column('M:M', 14, format2)
             worksheet.set_column('N:N', 15, format2)
+            worksheet.set_column('O:O', 15, format2)
             worksheet.freeze_panes(1, 0)
             writer_xlsx.save()
         status_message("completed processing output files.", "yes")
@@ -1163,7 +1283,6 @@ def haversine_dist(lat1, lon1, lat2, lon2):
 
 def bearing(lat1, lon1, lat2, lon2):
     try:
-        #dLat = radians(lat2 - lat1)
         dLon = radians(lon2 - lon1)
         lat1 = radians(lat1)
         lat2 = radians(lat2)

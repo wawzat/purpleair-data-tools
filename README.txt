@@ -16,16 +16,19 @@ Python installation requirements
       prettytable
       xlsxwriter
 
-    Note: on Linux systems "sudo apt-get install python-matplotlib" may be required in lieu 
-        of "python -m pip install matplotlib".
+    Note: on Linux systems "sudo apt-get install python-matplotlib" may be
+    required in lieu of "python -m pip install matplotlib".
 
  Basic instructions for installation and use:
     Copy this file and the pasc_ref_stations.csv file to a folder on your computer.
-    Download historical PurpleAir sensor data to a folder on your computer. Download reference data with a one day longer range than Purpleair
+    Download historical PurpleAir sensor data to a folder on your computer.
+    Download reference data with a one day longer range than Purpleair
        data to account for 8-hour time shift.
-    Optionally download AQMD regulatory site reference data to the same folder as the PurpleAir sensor data. This is required to use the -r or -w options.
+    Optionally download AQMD regulatory site reference data to the same folder
+    as the PurpleAir sensor data. This is required to use the -r or -w options.
        See below for details on specific file naming conventions.
-    Optionally download darksky wind data to the same folder as the PurpleAir sensor data. This is required to use the -k option.
+    Optionally download darksky wind data to the same folder as the PurpleAir
+    sensor data. This is required to use the -k option.
        See below for detials on specific file naming conventions.
     Change the variables in the USER VARIABLES section to set the path to the parent of the folder you uploaded to and change any other user variables.
     Run python pasc.py from the command line with any optional flags and arguments as defined below.
@@ -43,6 +46,7 @@ Python installation requirements
     The combined data is resampled by averaging the readings over a specified interval and saved as new summarized Excel and/or csv file(s) as selected
       by the user (see command line arguments below).
 
+    The PM 2.5 AQI is calculated and included in the output files in the Ipm25 column.
 
  The available output file formats are described below:
 
@@ -127,6 +131,8 @@ Python installation requirements
               Fixed bug in summarize() if expected and acutal column names were not in sorted order.
     20191026: Improved handling of dataframe column naming to prevent potential issues with PurpleAir
               changing column names.
+    20191101: Added Ipm25 column for "AQI". AQI in quotes since the offical midnight to midnight
+              methodology is not used but a rolling 24 average is used instead.
 
 
   Notes for using reference files
