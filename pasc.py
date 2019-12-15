@@ -59,7 +59,7 @@ pasc.py
              defaults defined in the argument defaults section.
 
    use with -h or --help for help.
-20191106
+20191214
 """
 
 # ----------------------------START IMPORT SECTION-----------------------------
@@ -618,17 +618,15 @@ def combine_primary(args, csv_full_path):
 
                     # EXPERIMENTAL: Added for AQI calculation 
                     # For clarity may move most of this to calc_aqi()
-                    df_AQI = dfs[['created_at', 'PM2.5_CF1_ug/m3']].copy()
-                    df_AQI['created_at'] = pd.to_datetime(df_AQI['created_at'])
-                    df_AQI.set_index('created_at', inplace=True)
-                    df_AQI['PM2.5_avg'] = df_AQI.rolling('24H').mean()
-                    df_AQI.reset_index(inplace=True)
-                    df_AQI.index = dfs.index
-                    df_AQI['Ipm25'] = df_AQI.apply(
+                    dfs['created_at'] = pd.to_datetime(dfs['created_at'])
+                    dfs.set_index('created_at', inplace=True)
+                    dfs = dfs.sort_index()
+                    dfs['PM2.5_avg'] = dfs['PM2.5_CF1_ug/m3'].rolling('24H').mean()
+                    dfs['Ipm25'] = dfs.apply(
                         lambda x: calc_aqi(x['PM2.5_avg']),
                         axis=1
                         )
-                    dfs['Ipm25'] = df_AQI['Ipm25']
+                    dfs.reset_index(inplace=True)
 
                     # A data frame for each sensor file is 
                     # added to a list to be concatenated.
@@ -804,7 +802,7 @@ def combine_reference(local_tz, args, csv_full_path,
                 )
             df_merged_ref.to_csv(
                 ref_output_filename,
-                index=True,
+            index=True,
                 date_format='%Y-%m-%d %H:%M:%S'
                 )
             status_message("completed merging reference files.", "yes")
