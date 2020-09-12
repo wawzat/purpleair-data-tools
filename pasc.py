@@ -59,12 +59,12 @@ pasc.py
              defaults defined in the argument defaults section.
 
    use with -h or --help for help.
-20191214
+20202029
 """
 
 # ----------------------------START IMPORT SECTION-----------------------------
 
-#import traceback
+import traceback
 import sys
 import glob
 import os
@@ -83,6 +83,7 @@ from collections import defaultdict
 import pandas as pd                       # Not included with base Python.
 import matplotlib.pyplot as plt           # Not included with base Python.
 from prettytable import PrettyTable       # Not included with base Python.
+from tqdm import tqdm
 
 # ----------------------------END IMPORT SECTION-------------------------------
 
@@ -112,7 +113,7 @@ local_tz = timezone('US/Pacific')
 
 #user_directory = r' '
 matrix5 = r'd:\Users\James\OneDrive\Documents\House\PurpleAir'
-virtualbox = r'/media/sf_VM_Shared_Files/House/PurpleAir'
+virtualbox = r'/media/sf_PurpleAir'
 servitor = r'c:\Users\Jim\OneDrive\Documents\House\PurpleAir'
 wsl_ubuntu_matrix5 = r'/mnt/d/Users/James/OneDrive/Documents/House/PurpleAir'
 wsl_ubuntu_servitor = r'/mnt/c/Users/Jim/OneDrive/Documents/House/PurpleAir'
@@ -510,7 +511,7 @@ def calc_aqi(PM2_5):
     pm25_aqi = {
         'good': [0, 50, 0, 12],
         'moderate': [51, 100, 12.1, 35.4],
-        'sensitive': [101, 150, 33.5, 55.4],
+        'sensitive': [101, 150, 35.5, 55.4],
         'unhealthy': [151, 200, 55.5, 150.4],
         'very': [201, 300, 150.5, 250.4],
         'hazardous': [301, 500, 250.5, 500.4],
@@ -521,7 +522,7 @@ def calc_aqi(PM2_5):
             aqi_cat = 'good'
         elif (12.1 <= PM2_5 <= 35.4):
             aqi_cat = 'moderate'
-        elif (33.5 <= PM2_5 <= 55.4):
+        elif (35.5 <= PM2_5 <= 55.4):
             aqi_cat = 'sensitive'
         elif (55.5 <= PM2_5 <= 150.4):
             aqi_cat = 'unhealthy'
@@ -579,67 +580,68 @@ def combine_primary(args, csv_full_path):
             remaining_size = combined_size
             remaining_count = combined_count
             filenames = os.path.join(csv_full_path, "*Primary*.csv")
-            for filename in glob.glob(filenames):
-                status_message(
-                        "reading " 
-                        + str(remaining_count)
-                        + " primary sensor files / "
-                        + '{:,}'.format(remaining_size)
-                        + " bytes remaining.",
-                        "no"
+            with tqdm(
+                    total=combined_count,
+                    bar_format="{l_bar}{bar}" \
+                        "| files processed: {n_fmt}/{total_fmt} |" \
+                        " {postfix[0]} {postfix[1][remaining]:0,}/" \
+                        "{postfix[2][total]:0,}",
+                    postfix=["bytes processed:",
+                        dict(remaining=0),
+                        dict(total=0)
+                        ]
+                    ) as bar:
+                bar.set_description("reading primary files")
+                for filename in glob.glob(filenames):
+                    remaining_size = remaining_size - os.path.getsize(filename)
+                    remaining_count -= 1
+                    tag_number, LAT_coord, LON_coord = parse_path(
+                        filename, csv_full_path
                         )
-                remaining_size = remaining_size - os.path.getsize(filename)
-                remaining_count -= 1
-                tag_number, LAT_coord, LON_coord = parse_path(
-                    filename, csv_full_path
-                    )
-                dfs = pd.read_csv(filename, index_col=None, header=0)
-                if not dfs.empty:
-                    # Drop 'unnamed' column.
-                    dfs = dfs.dropna(how='all', axis='columns')
-                    # Get list of dfs column names
-                    actual_fieldnames = dfs.columns.values.tolist()
-                    actual_fieldnames_sorted = sorted(actual_fieldnames)
-                    # Create a dictionary of actual column names : column names 
-                    # used in the Oct 2019 purpleair data naming convention.
-                    fieldnames_dict = dict(
-                        zip(actual_fieldnames_sorted, pa_version3_sorted)
-                        )
-                    # Rename columns to the column names used in 
-                    # the Oct 2019 purpleair data naming convention.
-                    dfs = dfs.rename(columns=fieldnames_dict)
-                    dfs['created_at'] = (
-                        dfs['created_at'].apply(lambda x: x.rstrip(' UTC'))
-                        )
-                    # Insert the Sensor, Lat and Lon values.
-                    dfs['Sensor'] = tag_number
-                    dfs['Lat'] = float(LAT_coord)
-                    dfs['Lon'] = float(LON_coord)
+                    dfs = pd.read_csv(filename, index_col=None, header=0)
+                    if not dfs.empty:
+                        # Drop 'unnamed' column.
+                        dfs = dfs.dropna(how='all', axis='columns')
+                        # Get list of dfs column names
+                        actual_fieldnames = dfs.columns.values.tolist()
+                        actual_fieldnames_sorted = sorted(actual_fieldnames)
+                        # Create a dictionary of actual column names : column names 
+                        # used in the Oct 2019 purpleair data naming convention.
+                        fieldnames_dict = dict(
+                            zip(actual_fieldnames_sorted, pa_version3_sorted)
+                            )
+                        # Rename columns to the column names used in 
+                        # the Oct 2019 purpleair data naming convention.
+                        dfs = dfs.rename(columns=fieldnames_dict)
+                        dfs['created_at'] = (
+                            dfs['created_at'].apply(lambda x: x.rstrip(' UTC'))
+                            )
+                        # Insert the Sensor, Lat and Lon values.
+                        dfs['Sensor'] = tag_number
+                        dfs['Lat'] = float(LAT_coord)
+                        dfs['Lon'] = float(LON_coord)
 
-                    # EXPERIMENTAL: Added for AQI calculation 
-                    # For clarity may move most of this to calc_aqi()
-                    dfs['created_at'] = pd.to_datetime(dfs['created_at'])
-                    dfs.set_index('created_at', inplace=True)
-                    dfs = dfs.sort_index()
-                    dfs['PM2.5_avg'] = dfs['PM2.5_CF1_ug/m3'].rolling('24H').mean()
-                    dfs['Ipm25'] = dfs.apply(
-                        lambda x: calc_aqi(x['PM2.5_avg']),
-                        axis=1
-                        )
-                    dfs.reset_index(inplace=True)
+                        # EXPERIMENTAL: Added for AQI calculation 
+                        # For clarity may move most of this to calc_aqi()
+                        tqdm.pandas(desc='calcuating AQI')
+                        dfs['created_at'] = pd.to_datetime(dfs['created_at'])
+                        dfs.set_index('created_at', inplace=True)
+                        dfs = dfs.sort_index()
+                        dfs['PM2.5_avg'] = dfs['PM2.5_CF1_ug/m3'].rolling('24H').mean()
+                        dfs['Ipm25'] = dfs.apply(
+                            lambda x: calc_aqi(x['PM2.5_avg']),
+                            axis=1
+                            )
+                        dfs.reset_index(inplace=True)
 
-                    # A data frame for each sensor file is 
-                    # added to a list to be concatenated.
-                    li.append(dfs)
-            status_message(
-                    "completed reading primary files: processed "
-                    + str(combined_count)
-                    + " primary sensor files / "
-                    + '{:,}'.format(combined_size)
-                    + " bytes.",
-                    "yes"
-                    )
-            status_message("combining primary files.", "no")
+                        # A data frame for each sensor file is 
+                        # added to a list to be concatenated.
+                        li.append(dfs)
+                    bar.postfix[1]["remaining"] = remaining_size
+                    bar.postfix[2]["total"] = combined_size
+                    bar.update()
+            bar.close()
+            #status_message("combining primary files.", "no")
             df_combined_primary = pd.concat(li, axis=0, sort=True)
             df_combined_primary = df_combined_primary.rename(columns=mapping)
             df_combined_primary = df_combined_primary[cols]
@@ -655,7 +657,7 @@ def combine_primary(args, csv_full_path):
                 'min_date': df_combined_primary['DateTime_UTC'].min().floor('h'),
                 'max_date': df_combined_primary['DateTime_UTC'].max().ceil('h')
                 }
-            status_message("completed combining primary files.", "yes")
+            #status_message("completed combining primary files.", "yes")
             if args.full and (not (args.reference or args.wind)):
                 # write the combined sensor data to a csv file if user selected
                 # -f option but hold off and write the data in get_reference() if
@@ -680,7 +682,7 @@ def combine_primary(args, csv_full_path):
     except Exception as e:
         print(" ")
         print("error in combine_primary() function: %s" % e)
-        #traceback.print_exc(file=sys.stdout)
+        traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 
 
@@ -729,31 +731,39 @@ def combine_reference(local_tz, args, csv_full_path,
             remaining_count = combined_count
             # Build a list of dataframes from the reference files, merge
             # and append them to the combined primary dataframe
-            for filename in glob.glob(os.path.join(csv_full_path, "*REF*.csv")):
-                status_message(
-                        "reading " 
-                        + str(remaining_count)
-                        + " reference files / "
-                        + '{:,}'.format(remaining_size)
-                        + " bytes remaining.",
-                        "no"
+            with tqdm(
+                    total=combined_count,
+                    bar_format="{l_bar}{bar}" \
+                        "| files remaining: {n_fmt}/{total_fmt} |" \
+                        " {postfix[0]} {postfix[1][remaining]:0,}/" \
+                        "{postfix[2][total]:0,}",
+                    postfix=["bytes remaining:",
+                        dict(remaining=0),
+                        dict(total=0)
+                        ]
+                    ) as bar:
+                bar.set_description("reading reference files")
+                for filename in glob.glob(os.path.join(csv_full_path, "*REF*.csv")):
+                    remaining_size = remaining_size - os.path.getsize(filename)
+                    remaining_count -= 1
+                    basename = os.path.basename(filename)
+                    underscore = basename.index('_')
+                    dot = basename.index('.')
+                    df = pd.read_csv(
+                            filename,
+                            index_col=["Date Time"],
+                            usecols=["Date Time", "Value"],
+                            parse_dates=["Date Time"]
+                            )
+                    ref_val = str(
+                        value_names.get(basename[len(basename)-6:dot].strip())
                         )
-                remaining_size = remaining_size - os.path.getsize(filename)
-                remaining_count -= 1
-                basename = os.path.basename(filename)
-                underscore = basename.index('_')
-                dot = basename.index('.')
-                df = pd.read_csv(
-                        filename,
-                        index_col=["Date Time"],
-                        usecols=["Date Time", "Value"],
-                        parse_dates=["Date Time"]
-                        )
-                ref_val = str(
-                    value_names.get(basename[len(basename)-6:dot].strip())
-                    )
-                df = df.rename(columns={"Value": ref_val})
-                dfs.append(df)
+                    df = df.rename(columns={"Value": ref_val})
+                    dfs.append(df)
+                    bar.postfix[1]["remaining"] = remaining_size
+                    bar.postfix[2]["total"] = combined_size
+                    bar.update()
+            bar.close()
             sensor_name = basename[:underscore].strip() + "_REF"
             csv_combined_filename = csv_full_path + "combined_full.csv"
             ref_output_filename = (
@@ -761,14 +771,6 @@ def combine_reference(local_tz, args, csv_full_path,
                 )
             Lat = float(station_coordinates[sensor_name]['Lat'])
             Lon = float(station_coordinates[sensor_name]['Lon'])
-            status_message(
-                "completed reading reference files: processed " +
-                str(combined_count) +
-                " reference files / " +
-                '{:,}'.format(combined_size) +
-                " bytes.", "yes"
-                )
-            # Merge reference files
             status_message("merging reference files.", "no")
             df_merged_ref = (
                 reduce(
@@ -1221,23 +1223,27 @@ def analyze_source(csv_full_path, df_summary):
         df_source2 = df_summary.copy()
         source_coords = {'Lat': 33.7555312, 'Lon': -117.481027}
 
-        df_source2['source_dist'] = df_source2.apply(
+        tqdm.pandas(desc='analyzing source distance')
+        df_source2['source_dist'] = df_source2.progress_apply(
             lambda x: haversine_dist(x['Lat'], x['Lon'],
             source_coords.get('Lat', 0),
             source_coords.get('Lon', 0)),
             axis=1
             )
-        df_source2['source_bear'] = df_source2.apply(
+        tqdm.pandas(desc='analyzing source bearing')
+        df_source2['source_bear'] = df_source2.progress_apply(
             lambda x: bearing(x['Lat'], x['Lon'],
             source_coords.get('Lat', 0),
             source_coords.get('Lon', 0)),
             axis=1
             )
-        df_source2['WindVector'] = df_source2.apply(
+        tqdm.pandas(desc='analyzing source wind direction')
+        df_source2['WindVector'] = df_source2.progress_apply(
             lambda x: (x['WindDirection']+180)%360,
             axis=1
             )
-        df_source2['wind_side'] = df_source2.apply(
+        tqdm.pandas(desc='analyzing source wind distance')
+        df_source2['wind_side'] = df_source2.progress_apply(
             lambda x : 'downwind'
             if x['source_bear'] >= (x['WindVector'] - 22.5) % 360
             and x['source_bear'] <= (x['WindVector'] + 22.5) % 360
@@ -1248,7 +1254,8 @@ def analyze_source(csv_full_path, df_summary):
             'source_bear', 'WindVector', 'WindSpeed',
             'wind_side'
             ]
-        print(df_source2[cols])
+        #print(" ")
+        #print(df_source2[cols])
         df_source2.to_csv(
                 source_output_filename,
                 index=False,
