@@ -64,6 +64,9 @@ pasc.py
 
 # ----------------------------START IMPORT SECTION-----------------------------
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import traceback
 import sys
 import glob
@@ -119,7 +122,7 @@ wsl_ubuntu_matrix5 = r'/mnt/d/Users/James/OneDrive/Documents/House/PurpleAir'
 wsl_ubuntu_servitor = r'/mnt/c/Users/Jim/OneDrive/Documents/House/PurpleAir'
 
 # Change this variable to point to the desired directory above. 
-data_directory = wsl_ubuntu_matrix5
+data_directory = matrix5
 
 # Argument Defaults: Used in the get_arguments function.
 directory_default = "Test3"
@@ -553,14 +556,21 @@ def combine_primary(args, csv_full_path):
         # Combines data from the sensor CSV files, adds sensor coordinates and
         # sensor names and optionally writes the combined CSV file to disk
         csv_combined_filename = csv_full_path + "combined_full.csv"
-        pa_version3 = [
+        #pa_version3 = [
+                #"created_at", "entry_id", "PM1.0_CF1_ug/m3", 
+                #"PM2.5_CF1_ug/m3", "PM10.0_CF1_ug/m3",
+                #"UptimeMinutes", "ADC", "Temperature_F",
+                #"Humidity_%", "PM2.5_ATM_ug/m3"
+                #]
+        pa_version4 = [
                 "created_at", "entry_id", "PM1.0_CF1_ug/m3", 
                 "PM2.5_CF1_ug/m3", "PM10.0_CF1_ug/m3",
-                "UptimeMinutes", "ADC", "Temperature_F",
+                "UptimeMinutes", "RSSI_dbm", "Temperature_F",
                 "Humidity_%", "PM2.5_ATM_ug/m3"
                 ]
-        pa_version3_sorted = sorted(pa_version3)
-        cols = [x if x != "created_at" else "DateTime_UTC" for x in pa_version3]
+
+        pa_version4_sorted = sorted(pa_version4)
+        cols = [x if x != "created_at" else "DateTime_UTC" for x in pa_version4]
         cols.insert(1, "Sensor")
         cols.insert(5, "Lat")
         cols.insert(6, "Lon")
@@ -608,7 +618,7 @@ def combine_primary(args, csv_full_path):
                         # Create a dictionary of actual column names : column names 
                         # used in the Oct 2019 purpleair data naming convention.
                         fieldnames_dict = dict(
-                            zip(actual_fieldnames_sorted, pa_version3_sorted)
+                            zip(actual_fieldnames_sorted, pa_version4_sorted)
                             )
                         # Rename columns to the column names used in 
                         # the Oct 2019 purpleair data naming convention.
@@ -820,7 +830,7 @@ def combine_reference(local_tz, args, csv_full_path,
             cols=([
                 'Sensor', 'DateTime_UTC', 'PM1.0_CF1_ug/m3',
                 'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
-                'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'ADC', 
+                'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'RSSI_dbm', 
                 'Temperature_F', 'Humidity_%'
                 ])
             df_merged_ref = df_merged_ref.reindex(columns=cols, copy=False)
@@ -982,7 +992,7 @@ def summarize(local_tz, args, output_type,
         cols=([
             'Sensor', datetime_col_name, 'PM1.0_CF1_ug/m3',
             'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
-            'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'ADC', 
+            'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'RSSI_dbm', 
             'Temperature_F', 'Humidity_%'
             ])
         if args.darksky:
@@ -990,7 +1000,7 @@ def summarize(local_tz, args, output_type,
             cols=([
                 'Sensor', datetime_col_name, 'PM1.0_CF1_ug/m3',
                 'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
-                'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'ADC', 
+                'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'RSSI_dbm', 
                 'Temperature_F', 'Humidity_%', 'WindDirection',
                 'WindSpeed'
                 ])
@@ -999,7 +1009,7 @@ def summarize(local_tz, args, output_type,
             cols=([
                 'Sensor', datetime_col_name, 'PM1.0_CF1_ug/m3',
                 'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
-                'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'ADC', 
+                'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'RSSI_dbm', 
                 'Temperature_F', 'Humidity_%', 'WindDirection',
                 'WindSpeed'
                 ])
@@ -1120,7 +1130,7 @@ def summarize(local_tz, args, output_type,
                     'Relative Humidity'
                     ])
             df3 = df3.rename(columns=mapping)
-            df3 = df3.drop(["UptimeMinutes", "ADC", "PM2.5_ATM_ug/m3"], axis=1)
+            df3 = df3.drop(["UptimeMinutes", "RSSI_dbm", "PM2.5_ATM_ug/m3"], axis=1)
             df3 = df3[cols]
             df3 = df3.drop([
                 "PM1.0", "PM10.0",
