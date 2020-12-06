@@ -122,7 +122,7 @@ wsl_ubuntu_matrix5 = r'/mnt/d/Users/James/OneDrive/Documents/House/PurpleAir'
 wsl_ubuntu_servitor = r'/mnt/c/Users/Jim/OneDrive/Documents/House/PurpleAir'
 
 # Change this variable to point to the desired directory above. 
-data_directory = matrix5
+data_directory = servitor
 
 # Argument Defaults: Used in the get_arguments function.
 directory_default = "Test3"
@@ -370,13 +370,14 @@ def existing_output_files_check(args, output_type, csv_full_path):
     xl_output_filename = "combined_summarized_xl.xlsx"
     csv_output_filename = "combined_summarized_csv.csv"
     retigo_output_filename = "combined_summarized_retigo.csv"
+    source_output_filename = "combined_summarized_source.csv"
     proceed = None
     files_exist = False
     combined_full_exist = False
     all_output_files = [
         csv_full_path+"{0}".format(i) for i in [
             csv_combined_filename, xl_output_filename,
-            csv_output_filename, retigo_output_filename
+            csv_output_filename, retigo_output_filename, source_output_filename
             ]
         ]
     overwrite_output_files = []
@@ -402,6 +403,7 @@ def existing_output_files_check(args, output_type, csv_full_path):
         for prefix in output_type:
             for filename in all_output_files:
                 if "_" + prefix in filename:
+                    print(filename)
                     overwrite_output_files.append(filename)
     table = PrettyTable()
     table.field_names = ["Filename", "Date Modified"]
@@ -419,18 +421,19 @@ def existing_output_files_check(args, output_type, csv_full_path):
                 combined_full_exist = True
             files_exist = True
     if files_exist:
-        print(" ")
-        print("existing output files in %s" % csv_full_path)
-        print(table)
-        print("warning! files listed above will be overwritten."
-              " exit and rename files you want to keep."
-              )
-        proceed = six.moves.input("overwrite files? (y/n): ")
-        if proceed == "y" or proceed == "n":
+        while True:
             print(" ")
-            return proceed, combined_full_exist, output_type
-        else:
-            print("please enter y or n: ")
+            print("existing output files in %s" % csv_full_path)
+            print(table)
+            print("warning! files listed above will be overwritten."
+                " exit and rename files you want to keep."
+                )
+            proceed = six.moves.input("overwrite files? (y/n): ")
+            if proceed == "y" or proceed == "n":
+                print(" ")
+                return proceed, combined_full_exist, output_type
+            else:
+                print("please enter y or n: ")
     else:
         proceed = "y"
         return proceed, combined_full_exist, output_type
@@ -1229,7 +1232,7 @@ def analyze_source(csv_full_path, df_summary):
     # "downwind" from the fixed coordinate. This is beta may be flawed.
     try:
         status_message("computing sensor bearing and distance.", "yes")
-        source_output_filename = csv_full_path + "source.csv"
+        source_output_filename = csv_full_path + "combined_summarized_source.csv"
         df_source2 = df_summary.copy()
         source_coords = {'Lat': 33.7555312, 'Lon': -117.481027}
 
