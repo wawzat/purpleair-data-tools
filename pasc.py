@@ -59,7 +59,7 @@ pasc.py
              defaults defined in the argument defaults section.
 
    use with -h or --help for help.
-20202029
+20210102
 """
 
 # ----------------------------START IMPORT SECTION-----------------------------
@@ -74,10 +74,9 @@ import os
 from sys import stdout
 from os.path import join, getsize
 import io                        # Required for Python 3.x.
-import six                       # Required for Python 3.x.
 from functools import reduce     # Required for Python 3.x.
 import re
-from math import radians, degrees, cos, sin, asin, atan2, sqrt
+from math import radians, degrees, cos, sin, asin, atan2, sqrt, isnan
 from datetime import datetime, timedelta
 import argparse
 from pytz import timezone, FixedOffset    # Included in Pandas package.
@@ -86,7 +85,9 @@ from collections import defaultdict
 import pandas as pd                       # Not included with base Python.
 import matplotlib.pyplot as plt           # Not included with base Python.
 from prettytable import PrettyTable       # Not included with base Python.
-from tqdm import tqdm
+from tqdm import tqdm                     # Not included with base Python.
+# note need to also install xlsxwriter (python -m pip install xlsxwriter) but don't need to import as it will be installed
+# as a depedency of Pandas.
 
 # ----------------------------END IMPORT SECTION-------------------------------
 
@@ -115,14 +116,14 @@ local_tz = timezone('US/Pacific')
 
 
 #user_directory = r' '
-matrix5 = r'd:\Users\James\OneDrive\Documents\House\PurpleAir'
+matrix5 = r'd:\Users\Jim\OneDrive\Documents\House\PurpleAir'
 virtualbox = r'/media/sf_PurpleAir'
 servitor = r'c:\Users\Jim\OneDrive\Documents\House\PurpleAir'
 wsl_ubuntu_matrix5 = r'/mnt/d/Users/James/OneDrive/Documents/House/PurpleAir'
 wsl_ubuntu_servitor = r'/mnt/c/Users/Jim/OneDrive/Documents/House/PurpleAir'
 
 # Change this variable to point to the desired directory above. 
-data_directory = servitor
+data_directory = matrix5
 
 # Argument Defaults: Used in the get_arguments function.
 directory_default = "Test3"
@@ -428,7 +429,7 @@ def existing_output_files_check(args, output_type, csv_full_path):
             print("warning! files listed above will be overwritten."
                 " exit and rename files you want to keep."
                 )
-            proceed = six.moves.input("overwrite files? (y/n): ")
+            proceed = input("overwrite files? (y/n): ")
             if proceed == "y" or proceed == "n":
                 print(" ")
                 return proceed, combined_full_exist, output_type
@@ -448,6 +449,18 @@ def parse_path(filename, csv_full_path):
         open_paren = filename.index('(', dot-4) 
         closed_paren = filename.index(')', dot-4)
         tag_number = filename[len(csv_full_path):spc].strip().upper()
+        #paren_str = filename[filename.find("(")+1:filename.find(")")]
+        #text = "John got up. John went to the cinema. John washed his hand."
+        #pos = -1 
+        #while True:
+            #pos = text.find('John', pos + 1)
+            #if pos == -1:
+               #break
+            #do_something
+        #if "." in paren_str and (paren_str[0].isdigit() or paren_str[0]==0):
+            #parsed_coords = paren_str
+        #else:
+            #paren_str = 
         parsed_coords = filename[open_paren+1:closed_paren].strip()
         spc = parsed_coords.index(' ')
         LAT_coord = parsed_coords[:spc].strip()
@@ -580,7 +593,7 @@ def combine_primary(args, csv_full_path):
         cols.insert(15, "Ipm25")
         mapping = ({"created_at": "DateTime_UTC"})
         li = []
-        if glob.glob(os.path.join(csv_full_path, "*Primary*.csv")):
+        if glob.glob(os.path.join(csv_full_path, "*Primary*_a.csv")):
             combined_size = 0
             combined_count = 0
             for root, dirs, files in os.walk(csv_full_path):
@@ -592,7 +605,7 @@ def combine_primary(args, csv_full_path):
                 break
             remaining_size = combined_size
             remaining_count = combined_count
-            filenames = os.path.join(csv_full_path, "*Primary*.csv")
+            filenames = os.path.join(csv_full_path, "*Primary*_a.csv")
             with tqdm(
                     total=combined_count,
                     bar_format="{l_bar}{bar}" \
@@ -606,6 +619,7 @@ def combine_primary(args, csv_full_path):
                     ) as bar:
                 bar.set_description("reading primary files")
                 for filename in glob.glob(filenames):
+                    #print(filename)
                     remaining_size = remaining_size - os.path.getsize(filename)
                     remaining_count -= 1
                     tag_number, LAT_coord, LON_coord = parse_path(
@@ -837,6 +851,7 @@ def combine_reference(local_tz, args, csv_full_path,
                 'Temperature_F', 'Humidity_%'
                 ])
             df_merged_ref = df_merged_ref.reindex(columns=cols, copy=False)
+            df_merged_ref = df_merged_ref[df_merged_ref['PM2.5_CF1_ug/m3'].notna()]
             # Calculate AQI
             # For clarity may move most of this to calc_aqi()
             df_AQI = df_merged_ref[['DateTime_UTC', 'PM2.5_CF1_ug/m3']].copy()
@@ -882,7 +897,7 @@ def combine_reference(local_tz, args, csv_full_path,
         print(" ")
         print(" error in combine_reference().")
         print(e)
-        #traceback.print_exc(file=sys.stdout)
+        traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 
 
@@ -988,7 +1003,7 @@ def summarize(local_tz, args, output_type,
         df3 = df2.resample(args.summary).mean()
         #df3 is used for the summary output files
         df3 = df3.reset_index()                  
-        # filter PM2.5 between 0-1000
+        # replace with clean function +/- 5ug/m^3 and +/- 70% . filter PM2.5 between 0-1000
         df3 = df3[df3['PM2.5_CF1_ug/m3'].between(0, 1000, inclusive=True)]  
         df3.rename(columns={"DateTime_UTC": datetime_col_name}, inplace=True)
         df3['Ipm25'] = df3['Ipm25'].astype(int)
