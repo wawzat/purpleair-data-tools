@@ -572,26 +572,32 @@ def combine_primary(args, csv_full_path):
         # Combines data from the sensor CSV files, adds sensor coordinates and
         # sensor names and optionally writes the combined CSV file to disk
         csv_combined_filename = csv_full_path + "combined_full.csv"
-        #pa_version3 = [
-                #"created_at", "entry_id", "PM1.0_CF1_ug/m3", 
-                #"PM2.5_CF1_ug/m3", "PM10.0_CF1_ug/m3",
-                #"UptimeMinutes", "ADC", "Temperature_F",
-                #"Humidity_%", "PM2.5_ATM_ug/m3"
-                #]
-        pa_version4 = [
+        pa_version4_a = [
                 "created_at", "entry_id", "PM1.0_CF1_ug/m3", 
                 "PM2.5_CF1_ug/m3", "PM10.0_CF1_ug/m3",
                 "UptimeMinutes", "RSSI_dbm", "Temperature_F",
                 "Humidity_%", "PM2.5_ATM_ug/m3"
                 ]
 
-        pa_version4_sorted = sorted(pa_version4)
-        cols = [x if x != "created_at" else "DateTime_UTC" for x in pa_version4]
+        pa_version4_a_sorted = sorted(pa_version4_a)
+        #cols = [x if x != "created_at" else "DateTime_UTC" for x in pa_version4_a]
+        cols = [x for x in pa_version4_a]
         cols.insert(1, "Sensor")
         cols.insert(5, "Lat")
         cols.insert(6, "Lon")
         cols.insert(15, "Ipm25")
-        mapping = ({"created_at": "DateTime_UTC"})
+        mapping = ({
+            "created_at": "DateTime_UTC",
+            "entry_id": "entry_id_a",
+            "PM1.0_CF1_ug/m3": "PM1.0_CF1_ug/m3_a", 
+            "PM2.5_CF1_ug/m3": "PM2.5_CF1_ug/m3_a",
+            "PM10.0_CF1_ug/m3": "PM10.0_CF1_ug/m3_a",
+            "UptimeMinutes": "UptimeMinutes_a",
+            "RSSI_dbm": "RSSI_dbm_a",
+            "Temperature_F": "Temperature_F_a",
+            "Humidity_%": "Humidity_%_a",
+            "PM2.5_ATM_ug/m3": "PM2.5_ATM_ug/m3_a"
+            })
         li = []
         if glob.glob(os.path.join(csv_full_path, "*Primary*_a.csv")):
             combined_size = 0
@@ -617,7 +623,7 @@ def combine_primary(args, csv_full_path):
                         dict(total=0)
                         ]
                     ) as bar:
-                bar.set_description("reading primary files")
+                bar.set_description("reading primary a files")
                 for filename in glob.glob(filenames):
                     #print(filename)
                     remaining_size = remaining_size - os.path.getsize(filename)
@@ -628,18 +634,22 @@ def combine_primary(args, csv_full_path):
                     dfs = pd.read_csv(filename, index_col=None, header=0)
                     if not dfs.empty:
                         # Drop 'unnamed' column.
-                        dfs = dfs.dropna(how='all', axis='columns')
+                        #dfs = dfs.dropna(how='all', axis='columns')
                         # Get list of dfs column names
                         actual_fieldnames = dfs.columns.values.tolist()
                         actual_fieldnames_sorted = sorted(actual_fieldnames)
                         # Create a dictionary of actual column names : column names 
                         # used in the Oct 2019 purpleair data naming convention.
                         fieldnames_dict = dict(
-                            zip(actual_fieldnames_sorted, pa_version4_sorted)
+                            zip(actual_fieldnames_sorted, pa_version4_a_sorted)
                             )
                         # Rename columns to the column names used in 
                         # the Oct 2019 purpleair data naming convention.
                         dfs = dfs.rename(columns=fieldnames_dict)
+                        #print(" ")
+                        #print("dfs created at")
+                        #print(dfs['created_at'])
+                        #print(" ")
                         dfs['created_at'] = (
                             dfs['created_at'].apply(lambda x: x.rstrip(' UTC'))
                             )
@@ -669,22 +679,182 @@ def combine_primary(args, csv_full_path):
                     bar.update()
             bar.close()
             #status_message("combining primary files.", "no")
-            df_combined_primary = pd.concat(li, axis=0, sort=True)
-            df_combined_primary = df_combined_primary.rename(columns=mapping)
-            df_combined_primary = df_combined_primary[cols]
-            df_combined_primary['DateTime_UTC'] = (
+            df_combined_primary_a = pd.concat(li, axis=0, sort=True)
+            df_combined_primary_a = df_combined_primary_a[cols]
+            df_combined_primary_a = df_combined_primary_a.rename(columns=mapping)
+            df_combined_primary_a['DateTime_UTC'] = (
                     pd.to_datetime(
-                        df_combined_primary['DateTime_UTC'],
+                        df_combined_primary_a['DateTime_UTC'],
                         format='%Y-%m-%d %H:%M:%S'
                         )
                     )
             # Create dictionay of min / max dates for later use in filtering
             # reference and/or darksky data to match
             date_range = {
-                'min_date': df_combined_primary['DateTime_UTC'].min().floor('h'),
-                'max_date': df_combined_primary['DateTime_UTC'].max().ceil('h')
+                'min_date': df_combined_primary_a['DateTime_UTC'].min().floor('h'),
+                'max_date': df_combined_primary_a['DateTime_UTC'].max().ceil('h')
                 }
             #status_message("completed combining primary files.", "yes")
+
+            df_combined_primary_a.set_index('DateTime_UTC', inplace=True)
+            #print(df_combined_primary_a.columns.values)
+            numeric = df_combined_primary_a.select_dtypes('number').columns
+            non_num = df_combined_primary_a.columns.difference(numeric)
+            d = {**{x: 'mean' for x in numeric}, **{x: 'first' for x in non_num}}
+            df_combined_primary_a = df_combined_primary_a.resample('5T').agg(d)
+
+            #df_combined_primary_a = df_combined_primary_a.resample("5T").mean()
+            df_combined_primary_a.reset_index(inplace=True)
+            #print(df_combined_primary_a.columns.values)
+        
+        # get the B channel data
+        pa_version4_b = [
+                "created_at", "entry_id", "PM1.0_CF1_ug/m3", 
+                "PM2.5_CF1_ug/m3", "PM10.0_CF1_ug/m3",
+                "UptimeMinutes", "RSSI_dbm", "Temperature_F",
+                "Humidity_%", "PM2.5_ATM_ug/m3"
+                ]
+
+        pa_version4_b_sorted = sorted(pa_version4_b)
+        #cols = [x if x != "created_at" else "DateTime_UTC" for x in pa_version4_b]
+        cols = [x for x in pa_version4_b]
+        cols.insert(1, "Sensor")
+        cols.insert(5, "Lat")
+        cols.insert(6, "Lon")
+        cols.insert(15, "Ipm25")
+        mapping = ({
+            "created_at": "DateTime_UTC",
+            "entry_id": "entry_id_b",
+            "PM1.0_CF1_ug/m3": "PM1.0_CF1_ug/m3_b", 
+            "PM2.5_CF1_ug/m3": "PM2.5_CF1_ug/m3_b",
+            "PM10.0_CF1_ug/m3": "PM10.0_CF1_ug/m3_b",
+            "UptimeMinutes": "UptimeMinutes_b",
+            "RSSI_dbm": "RSSI_dbm_b",
+            "Temperature_F": "Temperature_F_b",
+            "Humidity_%": "Humidity_%_b",
+            "PM2.5_ATM_ug/m3": "PM2.5_ATM_ug/m3_b"
+            })
+
+        li = []
+        if glob.glob(os.path.join(csv_full_path, "*Primary*_b.csv")):
+            combined_size = 0
+            combined_count = 0
+            for root, dirs, files in os.walk(csv_full_path):
+                for name in files:
+                    if "Primary" in name.split():
+                        combined_size += getsize(join(root, name))
+                        combined_count += 1
+                # don't walk files in subdirectories
+                break
+            remaining_size = combined_size
+            remaining_count = combined_count
+            filenames = os.path.join(csv_full_path, "*Primary*_b.csv")
+            with tqdm(
+                    total=combined_count,
+                    bar_format="{l_bar}{bar}" \
+                        "| b files processed: {n_fmt}/{total_fmt} |" \
+                        " {postfix[0]} {postfix[1][remaining]:0,}/" \
+                        "{postfix[2][total]:0,}",
+                    postfix=["b bytes processed:",
+                        dict(remaining=0),
+                        dict(total=0)
+                        ]
+                    ) as bar:
+                bar.set_description("reading primary b files")
+                for filename in glob.glob(filenames):
+                    #print(filename)
+                    remaining_size = remaining_size - os.path.getsize(filename)
+                    remaining_count -= 1
+                    tag_number, LAT_coord, LON_coord = parse_path(
+                        filename, csv_full_path
+                        )
+                    dfsb = pd.read_csv(filename, index_col=None, header=0)
+                    if not dfsb.empty:
+                        # Drop 'unnamed' column.
+                        #dfsb = dfsb.dropna(how='all', axis='columns')
+                        # Get list of dfs column names
+                        actual_fieldnames = dfsb.columns.values.tolist()
+                        actual_fieldnames_sorted = sorted(actual_fieldnames)
+                        # Create a dictionary of actual column names : column names 
+                        # used in the Oct 2019 purpleair data naming convention.
+                        fieldnames_dict = dict(
+                            zip(actual_fieldnames_sorted, pa_version4_b_sorted)
+                            )
+                        # Rename columns to the column names used in 
+                        # the Oct 2019 purpleair data naming convention.
+                        dfsb = dfsb.rename(columns=fieldnames_dict)
+                        #print(" ")
+                        #print("dfsb created at")
+                        #print(dfsb['created_at'])
+                        #print(" ")
+                        dfsb['created_at'] = (
+                            dfsb['created_at'].apply(lambda x: x.rstrip(' UTC'))
+                            )
+                        # Insert the Sensor, Lat and Lon values.
+                        dfsb['Sensor'] = tag_number
+                        dfsb['Lat'] = float(LAT_coord)
+                        dfsb['Lon'] = float(LON_coord)
+
+                        # EXPERIMENTAL: Added for AQI calculation 
+                        # For clarity may move most of this to calc_aqi()
+                        tqdm.pandas(desc='calcuating AQI')
+                        dfsb['created_at'] = pd.to_datetime(dfsb['created_at'])
+                        dfsb.set_index('created_at', inplace=True)
+                        dfsb = dfsb.sort_index()
+                        dfsb['PM2.5_avg'] = dfsb['PM2.5_CF1_ug/m3'].rolling('24H').mean()
+                        dfsb['Ipm25'] = dfsb.apply(
+                            lambda x: calc_aqi(x['PM2.5_avg']),
+                            axis=1
+                            )
+                        dfsb.reset_index(inplace=True)
+
+                        # A data frame for each sensor file is 
+                        # added to a list to be concatenated.
+                        li.append(dfsb)
+                    bar.postfix[1]["remaining"] = remaining_size
+                    bar.postfix[2]["total"] = combined_size
+                    bar.update()
+            bar.close()
+            #status_message("combining primary files.", "no")
+            df_combined_primary_b = pd.concat(li, axis=0, sort=True)
+            df_combined_primary_b = df_combined_primary_b[cols]
+            df_combined_primary_b = df_combined_primary_b.rename(columns=mapping)
+            df_combined_primary_b['DateTime_UTC'] = (
+                    pd.to_datetime(
+                        df_combined_primary_b['DateTime_UTC'],
+                        format='%Y-%m-%d %H:%M:%S'
+                        )
+                    )
+            # Create dictionay of min / max dates for later use in filtering
+            # reference and/or darksky data to match
+            date_range = {
+                'min_date': df_combined_primary_b['DateTime_UTC'].min().floor('h'),
+                'max_date': df_combined_primary_b['DateTime_UTC'].max().ceil('h')
+                }
+            #status_message("completed combining primary files.", "yes")
+            df_combined_primary_b.set_index('DateTime_UTC', inplace=True)
+            #print(df_combined_primary_a.columns.values)
+
+            numeric = df_combined_primary_b.select_dtypes('number').columns
+            non_num = df_combined_primary_b.columns.difference(numeric)
+            d = {**{x: 'mean' for x in numeric}, **{x: 'first' for x in non_num}}
+            df_combined_primary_b = df_combined_primary_b.resample('5T').agg(d)
+
+            #df_combined_primary_b = df_combined_primary_b.resample("5T").mean()
+            df_combined_primary_b.reset_index(inplace=True)
+
+            print(df_combined_primary_a)
+            print(df_combined_primary_b)
+            #df_combined_primary_ab = pd.merge(df_combined_primary_a, df_combined_primary_b, how='left', left_on=['Sensor', 'DateTime_UTC'], right_on=['Sensor', 'DateTime_UTC'])
+            df_combined_primary_ab = pd.merge(df_combined_primary_a, df_combined_primary_b, how='inner', on=['Sensor', 'DateTime_UTC'])
+            with open(csv_combined_filename, "w") as reference:
+                status_message("writing combined_full.csv file."
+                                "combine_primary()", "no"
+                                )
+                df_combined_primary_ab.to_csv(
+                    reference, index=False, date_format='%Y-%m-%d %H:%M:%S'
+                    )
+
             if args.full and (not (args.reference or args.wind)):
                 # write the combined sensor data to a csv file if user selected
                 # -f option but hold off and write the data in get_reference() if
@@ -705,7 +875,7 @@ def combine_primary(args, csv_full_path):
                               ' try a different directory. exiting.'
                               % args.directory
                               )
-        return df_combined_primary, date_range
+        return df_combined_primary_a, date_range
     except Exception as e:
         print(" ")
         print("error in combine_primary() function: %s" % e)
