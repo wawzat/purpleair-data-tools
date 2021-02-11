@@ -83,6 +83,7 @@ from pytz import timezone, FixedOffset    # Included in Pandas package.
 import csv
 from collections import defaultdict
 import pandas as pd                       # Not included with base Python.
+import numpy as np
 import matplotlib.pyplot as plt           # Not included with base Python.
 from prettytable import PrettyTable       # Not included with base Python.
 from tqdm import tqdm                     # Not included with base Python.
@@ -572,6 +573,11 @@ def combine_primary(args, csv_full_path):
         # Combines data from the sensor CSV files, adds sensor coordinates and
         # sensor names and optionally writes the combined CSV file to disk
         csv_combined_filename = csv_full_path + "combined_full.csv"
+        #TEMPORARY DEBUG
+        csv_combined_filename_a = csv_full_path + "combined_full_a.csv"
+        csv_combined_filename_b = csv_full_path + "combined_full_b.csv"
+        csv_combined_filename_ab = csv_full_path + "combined_full_ab.csv"
+
         pa_version4_a = [
                 "created_at", "entry_id", "PM1.0_CF1_ug/m3", 
                 "PM2.5_CF1_ug/m3", "PM10.0_CF1_ug/m3",
@@ -698,7 +704,14 @@ def combine_primary(args, csv_full_path):
 
             df_combined_primary_a.set_index('DateTime_UTC', inplace=True)
             #print(df_combined_primary_a.columns.values)
-            numeric = df_combined_primary_a.select_dtypes('number').columns
+            #numeric = df_combined_primary_a.select_dtypes('number').columns
+            numeric = [
+                    "PM1.0_CF1_ug/m3_a", 
+                    "PM2.5_CF1_ug/m3_a", "PM10.0_CF1_ug/m3_a",
+                    "Temperature_F_a",
+                    "Humidity_%_a", "PM2.5_ATM_ug/m3_a"
+                    ]
+
             non_num = df_combined_primary_a.columns.difference(numeric)
             d = {**{x: 'mean' for x in numeric}, **{x: 'first' for x in non_num}}
             df_combined_primary_a = df_combined_primary_a.resample('5T').agg(d)
@@ -835,7 +848,14 @@ def combine_primary(args, csv_full_path):
             df_combined_primary_b.set_index('DateTime_UTC', inplace=True)
             #print(df_combined_primary_a.columns.values)
 
-            numeric = df_combined_primary_b.select_dtypes('number').columns
+            #numeric = df_combined_primary_b.select_dtypes('number').columns
+            numeric = [
+                    "PM1.0_CF1_ug/m3_b", 
+                    "PM2.5_CF1_ug/m3_b", "PM10.0_CF1_ug/m3_b",
+                    "Temperature_F_b",
+                    "Humidity_%_b", "PM2.5_ATM_ug/m3_b"
+                    ]
+
             non_num = df_combined_primary_b.columns.difference(numeric)
             d = {**{x: 'mean' for x in numeric}, **{x: 'first' for x in non_num}}
             df_combined_primary_b = df_combined_primary_b.resample('5T').agg(d)
@@ -843,16 +863,44 @@ def combine_primary(args, csv_full_path):
             #df_combined_primary_b = df_combined_primary_b.resample("5T").mean()
             df_combined_primary_b.reset_index(inplace=True)
 
-            print(df_combined_primary_a)
-            print(df_combined_primary_b)
-            #df_combined_primary_ab = pd.merge(df_combined_primary_a, df_combined_primary_b, how='left', left_on=['Sensor', 'DateTime_UTC'], right_on=['Sensor', 'DateTime_UTC'])
-            df_combined_primary_ab = pd.merge(df_combined_primary_a, df_combined_primary_b, how='inner', on=['Sensor', 'DateTime_UTC'])
-            with open(csv_combined_filename, "w") as reference:
+            # half-threshold in nanoseconds
+            threshold = 1
+            threshold_ns = threshold * 60 * 1e9
+
+            # compute "interval" to which each session belongs
+            df_combined_primary_a['interval'] = pd.to_datetime(np.round(df_combined_primary_a.DateTime_UTC.astype(np.int64) / threshold_ns) * threshold_ns)
+            df_combined_primary_b['interval'] = pd.to_datetime(np.round(df_combined_primary_b.DateTime_UTC.astype(np.int64) / threshold_ns) * threshold_ns)
+            df_combined_primary_a.sort_values(['Sensor', 'interval'], inplace=True)
+            df_combined_primary_a.sort_values(['Sensor', 'interval'], inplace=True)
+
+            # join
+            cols = ['Sensor', 'interval']
+            df_combined_primary_ab = df_combined_primary_a.merge(df_combined_primary_b, on=cols, how='inner') 
+
+            #print(df_combined_primary_a)
+            #print(df_combined_primary_b)
+            #df_combined_primary_ab = df_combined_primary_a.merge(df_combined_primary_b, how='left', left_on=['Sensor', 'DateTime_UTC'], right_on=['Sensor', 'DateTime_UTC'])
+            #df_combined_primary_ab = pd.merge(df_combined_primary_a, df_combined_primary_b, how='inner', on=['Sensor', 'DateTime_UTC'])
+            with open(csv_combined_filename_ab, "w") as reference:
                 status_message("writing combined_full.csv file."
                                 "combine_primary()", "no"
                                 )
                 df_combined_primary_ab.to_csv(
-                    reference, index=False, date_format='%Y-%m-%d %H:%M:%S'
+                    reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
+                    )
+            with open(csv_combined_filename_a, "w") as reference:
+                status_message("writing combined_full_a.csv file."
+                                "combine_primary()", "no"
+                                )
+                df_combined_primary_a.to_csv(
+                    reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
+                    )
+            with open(csv_combined_filename_b, "w") as reference:
+                status_message("writing combined_full_a.csv file."
+                                "combine_primary()", "no"
+                                )
+                df_combined_primary_b.to_csv(
+                    reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
                     )
 
             if args.full and (not (args.reference or args.wind)):
@@ -865,7 +913,7 @@ def combine_primary(args, csv_full_path):
                                    "combine_primary()", "no"
                                    )
                     df_combined_primary[cols].to_csv(
-                        reference, index=False, date_format='%Y-%m-%d %H:%M:%S'
+                        reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
                         )
                     status_message("completed writing combined_full.csv file.",
                                    "yes"
@@ -1100,7 +1148,10 @@ def summarize(local_tz, args, output_type,
         df_interval['delta'] = (
             df_interval['tvalue']-df_interval['tvalue'].shift()
             ).fillna(pd.Timedelta(seconds=0))
-        df_interval = df_interval[~df_interval.Sensor.str.contains("REF")]
+        try: 
+            df_interval = df_interval[~df_interval.Sensor.str.contains("REF")]
+        except TypeError:
+            pass
         df_interval['delta_seconds'] = (
             df_interval['delta'].astype('timedelta64[s]')
             )
@@ -1347,7 +1398,7 @@ def summarize(local_tz, args, output_type,
     except Exception as e:
         print(" ")
         print("error in summarize() function: %s" % e)
-        #traceback.print_exc(file=sys.stdout)
+        traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 
 
