@@ -77,6 +77,7 @@ import io                        # Required for Python 3.x.
 from functools import reduce     # Required for Python 3.x.
 import re
 from math import radians, degrees, cos, sin, asin, atan2, sqrt, isnan
+from statistics import mean
 from datetime import datetime, timedelta
 import argparse
 from pytz import timezone, FixedOffset    # Included in Pandas package.
@@ -297,6 +298,9 @@ def get_arguments(csv_root_path,
                     help=argparse.SUPPRESS)
    g.add_argument('-t', '--stats', action='store_true',
                     dest='stats',
+                    help=argparse.SUPPRESS)
+   g.add_argument('-i', '--ignore', action='store_true',
+                    dest='ignore',
                     help=argparse.SUPPRESS)
    args = parser.parse_args()
    if args.wind:
@@ -573,10 +577,10 @@ def combine_primary(args, csv_full_path):
         # Combines data from the sensor CSV files, adds sensor coordinates and
         # sensor names and optionally writes the combined CSV file to disk
         csv_combined_filename = csv_full_path + "combined_full.csv"
-        #TEMPORARY DEBUG
         csv_combined_filename_a = csv_full_path + "combined_full_a.csv"
         csv_combined_filename_b = csv_full_path + "combined_full_b.csv"
         csv_combined_filename_ab = csv_full_path + "combined_full_ab.csv"
+        csv_combined_filename_filt = csv_full_path + "combined_full_filt.csv"
 
         pa_version4_a = [
                 "created_at", "entry_id", "PM1.0_CF1_ug/m3", 
@@ -591,14 +595,13 @@ def combine_primary(args, csv_full_path):
         cols.insert(1, "Sensor")
         cols.insert(5, "Lat")
         cols.insert(6, "Lon")
-        cols.insert(15, "Ipm25")
+        #cols.insert(15, "Ipm25")
         mapping = ({
             "created_at": "DateTime_UTC",
             "entry_id": "entry_id_a",
             "PM1.0_CF1_ug/m3": "PM1.0_CF1_ug/m3_a", 
             "PM2.5_CF1_ug/m3": "PM2.5_CF1_ug/m3_a",
             "PM10.0_CF1_ug/m3": "PM10.0_CF1_ug/m3_a",
-            "UptimeMinutes": "UptimeMinutes_a",
             "RSSI_dbm": "RSSI_dbm_a",
             "Temperature_F": "Temperature_F_a",
             "Humidity_%": "Humidity_%_a",
@@ -664,18 +667,6 @@ def combine_primary(args, csv_full_path):
                         dfs['Lat'] = float(LAT_coord)
                         dfs['Lon'] = float(LON_coord)
 
-                        # EXPERIMENTAL: Added for AQI calculation 
-                        # For clarity may move most of this to calc_aqi()
-                        tqdm.pandas(desc='calcuating AQI')
-                        dfs['created_at'] = pd.to_datetime(dfs['created_at'])
-                        dfs.set_index('created_at', inplace=True)
-                        dfs = dfs.sort_index()
-                        dfs['PM2.5_avg'] = dfs['PM2.5_CF1_ug/m3'].rolling('24H').mean()
-                        dfs['Ipm25'] = dfs.apply(
-                            lambda x: calc_aqi(x['PM2.5_avg']),
-                            axis=1
-                            )
-                        dfs.reset_index(inplace=True)
 
                         # A data frame for each sensor file is 
                         # added to a list to be concatenated.
@@ -704,7 +695,7 @@ def combine_primary(args, csv_full_path):
 
             df_combined_primary_a.set_index('DateTime_UTC', inplace=True)
             #print(df_combined_primary_a.columns.values)
-            #numeric = df_combined_primary_a.select_dtypes('number').columns
+            numeric = df_combined_primary_a.select_dtypes('number').columns
             numeric = [
                     "PM1.0_CF1_ug/m3_a", 
                     "PM2.5_CF1_ug/m3_a", "PM10.0_CF1_ug/m3_a",
@@ -714,9 +705,13 @@ def combine_primary(args, csv_full_path):
 
             non_num = df_combined_primary_a.columns.difference(numeric)
             d = {**{x: 'mean' for x in numeric}, **{x: 'first' for x in non_num}}
+            df_combined_primary_a = df_combined_primary_a.groupby('Sensor')
             df_combined_primary_a = df_combined_primary_a.resample('5T').agg(d)
+            #df_combined_primary_a = df_combined_primary_a.resample('5T').mean()
+            #df_combined_primary_a = df_combined_primary_a.reset_index()
 
             #df_combined_primary_a = df_combined_primary_a.resample("5T").mean()
+            df_combined_primary_a = df_combined_primary_a.drop('Sensor', 1)
             df_combined_primary_a.reset_index(inplace=True)
             #print(df_combined_primary_a.columns.values)
         
@@ -724,8 +719,8 @@ def combine_primary(args, csv_full_path):
         pa_version4_b = [
                 "created_at", "entry_id", "PM1.0_CF1_ug/m3", 
                 "PM2.5_CF1_ug/m3", "PM10.0_CF1_ug/m3",
-                "UptimeMinutes", "RSSI_dbm", "Temperature_F",
-                "Humidity_%", "PM2.5_ATM_ug/m3"
+                "Free_Mem", "ADC", "Pressure_hpa",
+                "IAQ", "PM2.5_ATM_ug/m3"
                 ]
 
         pa_version4_b_sorted = sorted(pa_version4_b)
@@ -734,17 +729,16 @@ def combine_primary(args, csv_full_path):
         cols.insert(1, "Sensor")
         cols.insert(5, "Lat")
         cols.insert(6, "Lon")
-        cols.insert(15, "Ipm25")
+        #cols.insert(15, "Ipm25")
         mapping = ({
             "created_at": "DateTime_UTC",
             "entry_id": "entry_id_b",
             "PM1.0_CF1_ug/m3": "PM1.0_CF1_ug/m3_b", 
             "PM2.5_CF1_ug/m3": "PM2.5_CF1_ug/m3_b",
             "PM10.0_CF1_ug/m3": "PM10.0_CF1_ug/m3_b",
-            "UptimeMinutes": "UptimeMinutes_b",
-            "RSSI_dbm": "RSSI_dbm_b",
-            "Temperature_F": "Temperature_F_b",
-            "Humidity_%": "Humidity_%_b",
+            "ADC_dbm": "ADC_b",
+            "Pressure_hpa": "Pressure_hpa_b",
+            "IAQ": "IAQ_b",
             "PM2.5_ATM_ug/m3": "PM2.5_ATM_ug/m3_b"
             })
 
@@ -815,10 +809,10 @@ def combine_primary(args, csv_full_path):
                         dfsb.set_index('created_at', inplace=True)
                         dfsb = dfsb.sort_index()
                         dfsb['PM2.5_avg'] = dfsb['PM2.5_CF1_ug/m3'].rolling('24H').mean()
-                        dfsb['Ipm25'] = dfsb.apply(
-                            lambda x: calc_aqi(x['PM2.5_avg']),
-                            axis=1
-                            )
+                        #dfsb['Ipm25'] = dfsb.apply(
+                            #lambda x: calc_aqi(x['PM2.5_avg']),
+                            #axis=1
+                            #)
                         dfsb.reset_index(inplace=True)
 
                         # A data frame for each sensor file is 
@@ -848,41 +842,109 @@ def combine_primary(args, csv_full_path):
             df_combined_primary_b.set_index('DateTime_UTC', inplace=True)
             #print(df_combined_primary_a.columns.values)
 
-            #numeric = df_combined_primary_b.select_dtypes('number').columns
+            numeric = df_combined_primary_b.select_dtypes('number').columns
             numeric = [
                     "PM1.0_CF1_ug/m3_b", 
                     "PM2.5_CF1_ug/m3_b", "PM10.0_CF1_ug/m3_b",
-                    "Temperature_F_b",
-                    "Humidity_%_b", "PM2.5_ATM_ug/m3_b"
+                    "Pressure_hpa_b",
+                    "IAQ_b", "PM2.5_ATM_ug/m3_b"
                     ]
 
             non_num = df_combined_primary_b.columns.difference(numeric)
             d = {**{x: 'mean' for x in numeric}, **{x: 'first' for x in non_num}}
+            df_combined_primary_b = df_combined_primary_b.groupby('Sensor')
             df_combined_primary_b = df_combined_primary_b.resample('5T').agg(d)
+            #df_combined_primary_b = df_combined_primary_b.resample('5T').mean()
+            #df_combined_primary_b = df_combined_primary_b.reset_index()
 
             #df_combined_primary_b = df_combined_primary_b.resample("5T").mean()
+            df_combined_primary_b = df_combined_primary_b.drop(['Sensor', 'Lat', 'Lon'] , 1)
+            #print(df_combined_primary_b)
             df_combined_primary_b.reset_index(inplace=True)
 
             # half-threshold in nanoseconds
-            threshold = 1
-            threshold_ns = threshold * 60 * 1e9
+            #threshold = 1
+            #threshold_ns = threshold * 60 * 1e9
 
             # compute "interval" to which each session belongs
-            df_combined_primary_a['interval'] = pd.to_datetime(np.round(df_combined_primary_a.DateTime_UTC.astype(np.int64) / threshold_ns) * threshold_ns)
-            df_combined_primary_b['interval'] = pd.to_datetime(np.round(df_combined_primary_b.DateTime_UTC.astype(np.int64) / threshold_ns) * threshold_ns)
-            df_combined_primary_a.sort_values(['Sensor', 'interval'], inplace=True)
-            df_combined_primary_a.sort_values(['Sensor', 'interval'], inplace=True)
+            #df_combined_primary_a['interval'] = pd.to_datetime(np.round(df_combined_primary_a.DateTime_UTC.astype(np.int64) / threshold_ns) * threshold_ns)
+            #df_combined_primary_b['interval'] = pd.to_datetime(np.round(df_combined_primary_b.DateTime_UTC.astype(np.int64) / threshold_ns) * threshold_ns)
+            #df_combined_primary_a.sort_values(['Sensor', 'interval'], inplace=True)
+            #df_combined_primary_a.sort_values(['Sensor', 'interval'], inplace=True)
 
             # join
-            cols = ['Sensor', 'interval']
+            cols = ['Sensor', 'DateTime_UTC']
             df_combined_primary_ab = df_combined_primary_a.merge(df_combined_primary_b, on=cols, how='inner') 
+
+            # Clean the data
+            # Remove data when channels differ by >= +- 5 ug/m^3 and >= +- 70%
+            df_filtered = df_combined_primary_ab[(
+                df_combined_primary_ab['PM2.5_ATM_ug/m3_a']-df_combined_primary_ab['PM2.5_ATM_ug/m3_b']
+                ).abs() < 5.0]
+            df_filtered = df_filtered[((
+                (df_filtered['PM2.5_ATM_ug/m3_a'] - df_filtered['PM2.5_ATM_ug/m3_b']).abs()
+                ) / ((df_filtered['PM2.5_ATM_ug/m3_a'] + df_filtered['PM2.5_ATM_ug/m3_b'] + .00001) / 2)) < 0.7]
+            df_filtered['PM1.0_CF1_ug/m3_avg'] = df_filtered[['PM1.0_CF1_ug/m3_a','PM1.0_CF1_ug/m3_b']].mean(axis=1)
+            df_filtered['PM2.5_CF1_ug/m3_avg'] = df_filtered[['PM2.5_CF1_ug/m3_a','PM2.5_CF1_ug/m3_b']].mean(axis=1)
+            df_filtered['PM10.0_CF1_ug/m3_avg'] = df_filtered[['PM10.0_CF1_ug/m3_a','PM10.0_CF1_ug/m3_b']].mean(axis=1)
+            df_filtered['PM2.5_ATM_ug/m3_avg'] = df_filtered[['PM2.5_ATM_ug/m3_a','PM2.5_ATM_ug/m3_b']].mean(axis=1)
+
+            # EXPERIMENTAL: Added for AQI calculation 
+            # For clarity may move most of this to calc_aqi()
+            tqdm.pandas(desc='calcuating AQI')
+            df_filtered['DateTime_UTC'] = pd.to_datetime(df_filtered['DateTime_UTC'])
+            df_filtered.set_index('DateTime_UTC', inplace=True)
+            df_filtered = df_filtered.sort_index()
+            #df_filtered['PM2.5_avg'] = df_filtered[''].rolling('24H').mean()
+            df_filtered['Ipm25'] = df_filtered.apply(
+                lambda x: calc_aqi(x['PM2.5_ATM_ug/m3_avg']),
+                axis=1
+                )
+            df_filtered.reset_index(inplace=True)
+            #df_filtered = df_filtered.drop(['PM2.5_avg'] , 1)
+            df_filtered.sort_values(['Sensor', 'DateTime_UTC'], ascending=[True, True], inplace=True)
+
+            drop_list = [
+                "entry_id_b",
+                "PM1.0_CF1_ug/m3_a", 
+                "PM2.5_CF1_ug/m3_a",
+                "PM10.0_CF1_ug/m3_a",
+                "PM2.5_ATM_ug/m3_a",
+                "PM1.0_CF1_ug/m3_b", 
+                "PM2.5_CF1_ug/m3_b",
+                "PM10.0_CF1_ug/m3_b",
+                "PM2.5_ATM_ug/m3_b"
+                ]
+            df_filtered = df_filtered.drop(drop_list , 1)
+
+            mapping = ({
+            "entry_id_a": "entry_id",
+            "PM1.0_CF1_ug/m3_avg": "PM1.0_CF1_ug/m3", 
+            "PM2.5_CF1_ug/m3_avg": "PM2.5_CF1_ug/m3",
+            "PM10.0_CF1_ug/m3_avg": "PM10.0_CF1_ug/m3",
+            "PM2.5_ATM_ug/m3_avg": "PM2.5_ATM_ug/m3",
+            "RSSI_dbm_a": "RSSI_dbm",
+            "ADC_dbm_b": "ADC",
+            "Pressure_hpa_b": "Pressure_hpa",
+            "Temperature_F_a": "Temperature_F",
+            "Humidity_%_a": "Humidity_%",
+            "IAQ_b": "IAQ"
+            })
+            df_filtered = df_filtered.rename(columns=mapping)
+            with open(csv_combined_filename_filt, "w") as reference:
+                status_message("writing combined_full_filt.csv file."
+                                "combine_primary()", "no"
+                                )
+                df_filtered.to_csv(
+                    reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
+                    )
 
             #print(df_combined_primary_a)
             #print(df_combined_primary_b)
             #df_combined_primary_ab = df_combined_primary_a.merge(df_combined_primary_b, how='left', left_on=['Sensor', 'DateTime_UTC'], right_on=['Sensor', 'DateTime_UTC'])
             #df_combined_primary_ab = pd.merge(df_combined_primary_a, df_combined_primary_b, how='inner', on=['Sensor', 'DateTime_UTC'])
             with open(csv_combined_filename_ab, "w") as reference:
-                status_message("writing combined_full.csv file."
+                status_message("writing combined_full_ab.csv file."
                                 "combine_primary()", "no"
                                 )
                 df_combined_primary_ab.to_csv(
@@ -896,7 +958,7 @@ def combine_primary(args, csv_full_path):
                     reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
                     )
             with open(csv_combined_filename_b, "w") as reference:
-                status_message("writing combined_full_a.csv file."
+                status_message("writing combined_full_b.csv file."
                                 "combine_primary()", "no"
                                 )
                 df_combined_primary_b.to_csv(
@@ -923,7 +985,7 @@ def combine_primary(args, csv_full_path):
                               ' try a different directory. exiting.'
                               % args.directory
                               )
-        return df_combined_primary_a, date_range
+        return df_filtered, date_range
     except Exception as e:
         print(" ")
         print("error in combine_primary() function: %s" % e)
@@ -931,7 +993,7 @@ def combine_primary(args, csv_full_path):
         sys.exit(1)
 
 
-def combine_reference(local_tz, args, csv_full_path,
+def combine_reference(args, csv_full_path,
                       station_coordinates, df_combined_primary,
                       date_range
                       ):
@@ -1128,8 +1190,8 @@ def summarize(local_tz, args, output_type,
         xl_output_filename = csv_full_path + "combined_summarized_xl.xlsx"
         csv_output_filename = csv_full_path + "combined_summarized_csv.csv"
         retigo_output_filename = csv_full_path + "combined_summarized_retigo.csv"
-        df_interval_output_filename = csv_full_path + "combined_full_interval.csv"
-        darksky_wind_files_count = 0
+        #df_interval_output_filename = csv_full_path + "combined_full_interval.csv"
+        #darksky_wind_files_count = 0
         status_message("summarizing data.", "no")
         datetime_col_name = "DateTime_" + str(local_tz).replace("/","_")
         df = df_combined_primary
@@ -1231,26 +1293,27 @@ def summarize(local_tz, args, output_type,
         cols=([
             'Sensor', datetime_col_name, 'PM1.0_CF1_ug/m3',
             'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
-            'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'RSSI_dbm', 
-            'Temperature_F', 'Humidity_%'
+            'Ipm25','Lat', 'Lon', 'UptimeMinutes', "Free_Mem",
+            'RSSI_dbm', 'Temperature_F', 'Humidity_%',
+            "Pressure_hpa"
             ])
         if args.darksky:
             df3 = df3.merge(df_dsky, how='left', on=datetime_col_name)
             cols=([
                 'Sensor', datetime_col_name, 'PM1.0_CF1_ug/m3',
                 'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
-                'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'RSSI_dbm', 
-                'Temperature_F', 'Humidity_%', 'WindDirection',
-                'WindSpeed'
+                'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'Free_Mem',
+                'RSSI_dbm', 'Temperature_F', 'Humidity_%', 'Pressure_hpa',
+                'WindDirection', 'WindSpeed'
                 ])
         elif sensor_name != " " and args.wind:
             df3 = df3.merge(df_wind, how='left', on=datetime_col_name)
             cols=([
                 'Sensor', datetime_col_name, 'PM1.0_CF1_ug/m3',
                 'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
-                'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'RSSI_dbm', 
-                'Temperature_F', 'Humidity_%', 'WindDirection',
-                'WindSpeed'
+                'Ipm25','Lat', 'Lon', 'UptimeMinutes', "Free_Mem",
+                'RSSI_dbm', 'Temperature_F', 'Humidity_%', "Pressure_hpa",
+                'WindDirection', 'WindSpeed'
                 ])
         df3 = df3[cols]
         df_summary = df3.copy()
@@ -1289,23 +1352,25 @@ def summarize(local_tz, args, output_type,
             worksheet = writer_xlsx.sheets['Sheet1']
             format1 = workbook.add_format({'num_format': 'Y-m-d h:mm:ss'})
             format2 = workbook.add_format({'num_format': '#,##0.00'})
-            format3 = workbook.add_format({'num_format': '#,##0.000000'})
+            format3 = workbook.add_format({'num_format': '#,##0.0000'})
             format4 = workbook.add_format({'num_format': '#,##0'})
-            worksheet.set_column('A:A', 9, format2)
-            worksheet.set_column('B:B', 22, format1)
-            worksheet.set_column('C:C', 21, format2)
-            worksheet.set_column('D:D', 21, format2)
-            worksheet.set_column('E:E', 21, format2)
-            worksheet.set_column('F:F', 21, format2)
-            worksheet.set_column('G:G', 8, format4)
-            worksheet.set_column('H:H', 8, format2)
-            worksheet.set_column('I:I', 8, format2)
-            worksheet.set_column('J:J', 16, format2)
-            worksheet.set_column('K:K', 10, format2)
-            worksheet.set_column('L:L', 16, format2)
+            worksheet.set_column('A:A', 11, format2)
+            worksheet.set_column('B:B', 20, format1)
+            worksheet.set_column('C:C', 18, format2)
+            worksheet.set_column('D:D', 18, format2)
+            worksheet.set_column('E:E', 18, format2)
+            worksheet.set_column('F:F', 18, format2)
+            worksheet.set_column('G:G', 7, format4)
+            worksheet.set_column('H:H', 9, format3)
+            worksheet.set_column('I:I', 9, format3)
+            worksheet.set_column('J:J', 15, format4)
+            worksheet.set_column('K:K', 10, format4)
+            worksheet.set_column('L:L', 9, format2)
             worksheet.set_column('M:M', 14, format2)
-            worksheet.set_column('N:N', 15, format2)
-            worksheet.set_column('O:O', 15, format2)
+            worksheet.set_column('N:N', 11, format2)
+            worksheet.set_column('O:O', 13, format2)
+            worksheet.set_column('P:P', 14, format4)
+            worksheet.set_column('Q:Q', 11, format2)
             worksheet.freeze_panes(1, 0)
             writer_xlsx.save()
         status_message("completed processing output files.", "yes")
@@ -1369,7 +1434,7 @@ def summarize(local_tz, args, output_type,
                     'Relative Humidity'
                     ])
             df3 = df3.rename(columns=mapping)
-            df3 = df3.drop(["UptimeMinutes", "RSSI_dbm", "PM2.5_ATM_ug/m3"], axis=1)
+            df3 = df3.drop(["UptimeMinutes", "Free_Mem", "RSSI_dbm", "PM2.5_ATM_ug/m3"], axis=1)
             df3 = df3[cols]
             df3 = df3.drop([
                 "PM1.0", "PM10.0",
@@ -1563,14 +1628,17 @@ if args.listref:
 else:
     arg_check(args)
     input_files_check(args, csv_full_path)
-    proceed, combined_full_exist, output_type = existing_output_files_check(
-        args, output_type, csv_full_path
-        )
+    if not args.ignore:
+        proceed, combined_full_exist, output_type = existing_output_files_check(
+            args, output_type, csv_full_path
+            )
+    else:
+        proceed = "y"
     if proceed == "y":
         df_combined_primary, date_range = combine_primary(args, csv_full_path)
         if args.reference or args.wind:
             sensor_name, df_combined_primary = combine_reference(
-                    local_tz, args,
+                    args,
                     csv_full_path,
                     station_coordinates,
                     df_combined_primary,
