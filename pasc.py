@@ -1286,7 +1286,7 @@ def combine_reference(args, csv_full_path,
         value_names = {
                 "wd": "WindDirection",
                 "ws": "WindSpeed",
-                "25": "PM2.5_CF1_ug/m3",
+                "25": "PM2.5_ATM_ug/m3",
                 "te": "Temperature_F"
                 }
         dfs = []
@@ -1398,16 +1398,18 @@ def combine_reference(args, csv_full_path,
             df_merged_ref.index = df_merged_ref.index.tz_localize(None)
             df_merged_ref.reset_index(inplace=True)
             cols=([
-                'Sensor', 'DateTime_UTC', 'PM1.0_CF1_ug/m3',
-                'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
+                'Sensor', 'DateTime_UTC', 'PM1.0_ATM_ug/m3',
+                'PM2.5_ATM_ug/m3', 'PM10.0_ATM_ug/m3',
+                ">=0.3um/dl", ">=0.5um/dl", ">=1.0um/dl",
+                ">=2.5um/dl", ">=5.0um/dl", ">=10.0um/dl",
                 'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'RSSI_dbm', 
-                'Temperature_F', 'Humidity_%'
+                'Temperature_F', 'Humidity_%', 'Pressure_hpa'
                 ])
             df_merged_ref = df_merged_ref.reindex(columns=cols, copy=False)
-            df_merged_ref = df_merged_ref[df_merged_ref['PM2.5_CF1_ug/m3'].notna()]
+            df_merged_ref = df_merged_ref[df_merged_ref['PM2.5_ATM_ug/m3'].notna()]
             # Calculate AQI
             # For clarity may move most of this to calc_aqi()
-            df_AQI = df_merged_ref[['DateTime_UTC', 'PM2.5_CF1_ug/m3']].copy()
+            df_AQI = df_merged_ref[['DateTime_UTC', 'PM2.5_ATM_ug/m3']].copy()
             df_AQI['DateTime_UTC'] = pd.to_datetime(df_AQI['DateTime_UTC'])
             df_AQI.set_index('DateTime_UTC', inplace=True)
             df_AQI['PM2.5_avg'] = df_AQI.rolling('24H').mean()
@@ -1418,6 +1420,7 @@ def combine_reference(args, csv_full_path,
                 axis=1
                 )
             df_merged_ref['Ipm25'] = df_AQI['Ipm25']
+            print(df_merged_ref)
             df_combined_primary = df_combined_primary.append(
                 df_merged_ref, sort=True
                 )
@@ -1666,7 +1669,7 @@ def summarize(local_tz, args, output_type,
                 "yes"
                 )
         df_raw_stats = (
-            df['PM2.5_CF1_ug/m3']
+            df['PM2.5_ATM_ug/m3']
             .describe().apply(lambda x: format(x, '.2f'))
             )
         df_summary_stats = (
