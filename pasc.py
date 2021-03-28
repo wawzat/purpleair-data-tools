@@ -582,6 +582,7 @@ def combine_primary(args, csv_full_path):
         csv_combined_filename_ab = csv_full_path + "combined_full_ab.csv"
         csv_combined_filename_filt = csv_full_path + "combined_full_filt.csv"
 
+        # Get the Primary A channel data
         pa_version4_a = [
                 "created_at", "entry_id", "PM1.0_CF1_ug/m3", 
                 "PM2.5_CF1_ug/m3", "PM10.0_CF1_ug/m3",
@@ -695,7 +696,6 @@ def combine_primary(args, csv_full_path):
 
             df_combined_primary_a.set_index('DateTime_UTC', inplace=True)
             #print(df_combined_primary_a.columns.values)
-            numeric = df_combined_primary_a.select_dtypes('number').columns
             numeric = [
                     "PM1.0_CF1_ug/m3_a", 
                     "PM2.5_CF1_ug/m3_a", "PM10.0_CF1_ug/m3_a",
@@ -715,7 +715,7 @@ def combine_primary(args, csv_full_path):
             df_combined_primary_a.reset_index(inplace=True)
             #print(df_combined_primary_a.columns.values)
         
-        # get the B channel data
+        # get the Primary B channel data
         pa_version4_b = [
                 "created_at", "entry_id", "PM1.0_CF1_ug/m3", 
                 "PM2.5_CF1_ug/m3", "PM10.0_CF1_ug/m3",
@@ -842,7 +842,6 @@ def combine_primary(args, csv_full_path):
             df_combined_primary_b.set_index('DateTime_UTC', inplace=True)
             #print(df_combined_primary_a.columns.values)
 
-            numeric = df_combined_primary_b.select_dtypes('number').columns
             numeric = [
                     "PM1.0_CF1_ug/m3_b", 
                     "PM2.5_CF1_ug/m3_b", "PM10.0_CF1_ug/m3_b",
@@ -862,24 +861,269 @@ def combine_primary(args, csv_full_path):
             #print(df_combined_primary_b)
             df_combined_primary_b.reset_index(inplace=True)
 
-            # half-threshold in nanoseconds
-            #threshold = 1
-            #threshold_ns = threshold * 60 * 1e9
-
-            # compute "interval" to which each session belongs
-            #df_combined_primary_a['interval'] = pd.to_datetime(np.round(df_combined_primary_a.DateTime_UTC.astype(np.int64) / threshold_ns) * threshold_ns)
-            #df_combined_primary_b['interval'] = pd.to_datetime(np.round(df_combined_primary_b.DateTime_UTC.astype(np.int64) / threshold_ns) * threshold_ns)
-            #df_combined_primary_a.sort_values(['Sensor', 'interval'], inplace=True)
-            #df_combined_primary_a.sort_values(['Sensor', 'interval'], inplace=True)
-
             # join
             cols = ['Sensor', 'DateTime_UTC']
             df_combined_primary_ab = df_combined_primary_a.merge(df_combined_primary_b, on=cols, how='inner') 
 
+
+        # Get the Secondary A channel data
+        pa_version4_as = [
+                "created_at", "entry_id",
+                ">=0.3um/dl", ">=0.5um/dl", ">=1.0um/dl",
+                ">=2.5um/dl", ">=5.0um/dl", ">=10.0um/dl",
+                "PM1.0_ATM_ug/m3", "PM10_ATM_ug/m3"
+                ]
+
+        pa_version4_as_sorted = sorted(pa_version4_as)
+        #cols = [x if x != "created_at" else "DateTime_UTC" for x in pa_version4_a]
+        cols = [x for x in pa_version4_as]
+        cols.insert(1, "Sensor")
+        cols.insert(5, "Lat")
+        cols.insert(6, "Lon")
+        mapping = ({
+            "created_at": "DateTime_UTC",
+            "entry_id": "entry_id_as",
+            ">=0.3um/dl": ">=0.3um/dl_as", 
+            ">=0.5um/dl": ">=0.5um/dl_as",
+            ">=1.0um/dl": ">=1.0um/dl_as",
+            ">=2.5um/dl": ">=2.5um/dl_as",
+            ">=5.0um/dl": ">=5.0um/dl_as",
+            ">=10.0um/dl": ">=10.0um/dl_as",
+            "PM1.0_ATM_ug/m3": "PM1.0_ATM_ug/m3_as",
+            "PM10_ATM_ug/m3": "PM10_ATM_ug/m3_as"
+            })
+        li = []
+        if glob.glob(os.path.join(csv_full_path, "*Secondary*_a.csv")):
+            combined_size = 0
+            combined_count = 0
+            for root, dirs, files in os.walk(csv_full_path):
+                for name in files:
+                    if "Secondary" in name.split():
+                        combined_size += getsize(join(root, name))
+                        combined_count += 1
+                # don't walk files in subdirectories
+                break
+            remaining_size = combined_size
+            remaining_count = combined_count
+            filenames = os.path.join(csv_full_path, "*Secondary*_a.csv")
+            with tqdm(
+                    total=combined_count,
+                    bar_format="{l_bar}{bar}" \
+                        "| files processed: {n_fmt}/{total_fmt} |" \
+                        " {postfix[0]} {postfix[1][remaining]:0,}/" \
+                        "{postfix[2][total]:0,}",
+                    postfix=["bytes processed:",
+                        dict(remaining=0),
+                        dict(total=0)
+                        ]
+                    ) as bar:
+                bar.set_description("reading secondary a files")
+                for filename in glob.glob(filenames):
+                    #print(filename)
+                    remaining_size = remaining_size - os.path.getsize(filename)
+                    remaining_count -= 1
+                    tag_number, LAT_coord, LON_coord = parse_path(
+                        filename, csv_full_path
+                        )
+                    dfs = pd.read_csv(filename, index_col=None, header=0)
+                    if not dfs.empty:
+                        # Drop 'unnamed' column.
+                        #dfs = dfs.dropna(how='all', axis='columns')
+                        # Get list of dfs column names
+                        actual_fieldnames = dfs.columns.values.tolist()
+                        actual_fieldnames_sorted = sorted(actual_fieldnames)
+                        # Create a dictionary of actual column names : column names 
+                        # used in the Oct 2019 purpleair data naming convention.
+                        fieldnames_dict = dict(
+                            zip(actual_fieldnames_sorted, pa_version4_as_sorted)
+                            )
+                        # Rename columns to the column names used in 
+                        # the Oct 2019 purpleair data naming convention.
+                        dfs = dfs.rename(columns=fieldnames_dict)
+                        dfs['created_at'] = (
+                            dfs['created_at'].apply(lambda x: x.rstrip(' UTC'))
+                            )
+                        # Insert the Sensor, Lat and Lon values.
+                        dfs['Sensor'] = tag_number
+                        dfs['Lat'] = float(LAT_coord)
+                        dfs['Lon'] = float(LON_coord)
+
+                        # A data frame for each sensor file is 
+                        # added to a list to be concatenated.
+                        li.append(dfs)
+                    bar.postfix[1]["remaining"] = remaining_size
+                    bar.postfix[2]["total"] = combined_size
+                    bar.update()
+            bar.close()
+            #status_message("combining primary files.", "no")
+            df_combined_secondary_a = pd.concat(li, axis=0, sort=True)
+            df_combined_secondary_a = df_combined_secondary_a[cols]
+            df_combined_secondary_a = df_combined_secondary_a.rename(columns=mapping)
+            df_combined_secondary_a['DateTime_UTC'] = (
+                    pd.to_datetime(
+                        df_combined_secondary_a['DateTime_UTC'],
+                        format='%Y-%m-%d %H:%M:%S'
+                        )
+                    )
+            # Create dictionay of min / max dates for later use in filtering
+            # reference and/or darksky data to match
+            date_range = {
+                'min_date': df_combined_secondary_a['DateTime_UTC'].min().floor('h'),
+                'max_date': df_combined_secondary_a['DateTime_UTC'].max().ceil('h')
+                }
+            #status_message("completed combining primary files.", "yes")
+
+            df_combined_secondary_a.set_index('DateTime_UTC', inplace=True)
+            #print(df_combined_primary_a.columns.values)
+            numeric = [
+                    ">=0.3um/dl_as", ">=0.5um/dl_as", ">=1.0um/dl_as",
+                    ">=2.5um/dl_as", ">=5.0um/dl_as", ">=10.0um/dl_as",
+                    "PM1.0_ATM_ug/m3_as", "PM10_ATM_ug/m3_as"
+                    ]
+            non_num = df_combined_secondary_a.columns.difference(numeric)
+            d = {**{x: 'mean' for x in numeric}, **{x: 'first' for x in non_num}}
+            df_combined_secondary_a = df_combined_secondary_a.groupby('Sensor')
+            df_combined_secondary_a = df_combined_secondary_a.resample('5T').agg(d)
+
+            df_combined_secondary_a = df_combined_secondary_a.drop('Sensor', 1)
+            df_combined_secondary_a.reset_index(inplace=True)
+
+        # Get the Secondary B channel data
+        pa_version4_bs = [
+                "created_at", "entry_id",
+                ">=0.3um/dl", ">=0.5um/dl", ">=1.0um/dl",
+                ">=2.5um/dl", ">=5.0um/dl", ">=10.0um/dl",
+                "PM1.0_ATM_ug/m3", "PM10_ATM_ug/m3"
+                ]
+
+        pa_version4_bs_sorted = sorted(pa_version4_bs)
+        #cols = [x if x != "created_at" else "DateTime_UTC" for x in pa_version4_a]
+        cols = [x for x in pa_version4_bs]
+        cols.insert(1, "Sensor")
+        cols.insert(5, "Lat")
+        cols.insert(6, "Lon")
+        mapping = ({
+            "created_at": "DateTime_UTC",
+            "entry_id": "entry_id_as",
+            ">=0.3um/dl": ">=0.3um/dl_bs", 
+            ">=0.5um/dl": ">=0.5um/dl_bs",
+            ">=1.0um/dl": ">=1.0um/dl_bs",
+            ">=2.5um/dl": ">=2.5um/dl_bs",
+            ">=5.0um/dl": ">=5.0um/dl_bs",
+            ">=10.0um/dl": ">=10.0um/dl_bs",
+            "PM1.0_ATM_ug/m3": "PM1.0_ATM_ug/m3_bs",
+            "PM10_ATM_ug/m3": "PM10_ATM_ug/m3_bs"
+            })
+        li = []
+        if glob.glob(os.path.join(csv_full_path, "*Secondary*_b.csv")):
+            combined_size = 0
+            combined_count = 0
+            for root, dirs, files in os.walk(csv_full_path):
+                for name in files:
+                    if "Secondary" in name.split():
+                        combined_size += getsize(join(root, name))
+                        combined_count += 1
+                # don't walk files in subdirectories
+                break
+            remaining_size = combined_size
+            remaining_count = combined_count
+            filenames = os.path.join(csv_full_path, "*Secondary*_b.csv")
+            with tqdm(
+                    total=combined_count,
+                    bar_format="{l_bar}{bar}" \
+                        "| files processed: {n_fmt}/{total_fmt} |" \
+                        " {postfix[0]} {postfix[1][remaining]:0,}/" \
+                        "{postfix[2][total]:0,}",
+                    postfix=["bytes processed:",
+                        dict(remaining=0),
+                        dict(total=0)
+                        ]
+                    ) as bar:
+                bar.set_description("reading secondary b files")
+                for filename in glob.glob(filenames):
+                    #print(filename)
+                    remaining_size = remaining_size - os.path.getsize(filename)
+                    remaining_count -= 1
+                    tag_number, LAT_coord, LON_coord = parse_path(
+                        filename, csv_full_path
+                        )
+                    dfs = pd.read_csv(filename, index_col=None, header=0)
+                    if not dfs.empty:
+                        # Drop 'unnamed' column.
+                        #dfs = dfs.dropna(how='all', axis='columns')
+                        # Get list of dfs column names
+                        actual_fieldnames = dfs.columns.values.tolist()
+                        actual_fieldnames_sorted = sorted(actual_fieldnames)
+                        # Create a dictionary of actual column names : column names 
+                        # used in the Oct 2019 purpleair data naming convention.
+                        fieldnames_dict = dict(
+                            zip(actual_fieldnames_sorted, pa_version4_bs_sorted)
+                            )
+                        # Rename columns to the column names used in 
+                        # the Oct 2019 purpleair data naming convention.
+                        dfs = dfs.rename(columns=fieldnames_dict)
+                        #print(" ")
+                        #print("dfs created at")
+                        #print(dfs['created_at'])
+                        #print(" ")
+                        dfs['created_at'] = (
+                            dfs['created_at'].apply(lambda x: x.rstrip(' UTC'))
+                            )
+                        # Insert the Sensor, Lat and Lon values.
+                        dfs['Sensor'] = tag_number
+                        dfs['Lat'] = float(LAT_coord)
+                        dfs['Lon'] = float(LON_coord)
+
+                        # A data frame for each sensor file is 
+                        # added to a list to be concatenated.
+                        li.append(dfs)
+                    bar.postfix[1]["remaining"] = remaining_size
+                    bar.postfix[2]["total"] = combined_size
+                    bar.update()
+            bar.close()
+            #status_message("combining primary files.", "no")
+            df_combined_secondary_b = pd.concat(li, axis=0, sort=True)
+            df_combined_secondary_b = df_combined_secondary_b[cols]
+            df_combined_secondary_b = df_combined_secondary_b.rename(columns=mapping)
+            df_combined_secondary_b['DateTime_UTC'] = (
+                    pd.to_datetime(
+                        df_combined_secondary_b['DateTime_UTC'],
+                        format='%Y-%m-%d %H:%M:%S'
+                        )
+                    )
+            # Create dictionay of min / max dates for later use in filtering
+            # reference and/or darksky data to match
+            date_range = {
+                'min_date': df_combined_secondary_b['DateTime_UTC'].min().floor('h'),
+                'max_date': df_combined_secondary_b['DateTime_UTC'].max().ceil('h')
+                }
+            #status_message("completed combining primary files.", "yes")
+
+            df_combined_secondary_b.set_index('DateTime_UTC', inplace=True)
+            #print(df_combined_primary_a.columns.values)
+            numeric = df_combined_secondary_b.select_dtypes('number').columns
+            numeric = [
+                    ">=0.3um/dl_bs", ">=0.5um/dl_bs", ">=1.0um/dl_bs",
+                    ">=2.5um/dl_bs", ">=5.0um/dl_bs", ">=10.0um/dl_bs",
+                    "PM1.0_ATM_ug/m3_bs", "PM10_ATM_ug/m3_bs"
+                    ]
+            non_num = df_combined_secondary_b.columns.difference(numeric)
+            d = {**{x: 'mean' for x in numeric}, **{x: 'first' for x in non_num}}
+            df_combined_secondary_b = df_combined_secondary_b.groupby('Sensor')
+            df_combined_secondary_b = df_combined_secondary_b.resample('5T').agg(d)
+
+            df_combined_secondary_b = df_combined_secondary_b.drop('Sensor', 1)
+            df_combined_secondary_b.reset_index(inplace=True)
+
+            # join
+            cols = ['Sensor', 'DateTime_UTC']
+            df_combined_secondary_ab = df_combined_secondary_a.merge(df_combined_secondary_b, on=cols, how='inner') 
+            df_combined_all = df_combined_primary_ab.merge(df_combined_secondary_ab, on=cols, how='inner')
+
             # Clean the data
             # Remove data when channels differ by >= +- 5 ug/m^3 and >= +- 70%
-            df_filtered = df_combined_primary_ab[(
-                df_combined_primary_ab['PM2.5_ATM_ug/m3_a']-df_combined_primary_ab['PM2.5_ATM_ug/m3_b']
+            df_filtered = df_combined_all[(
+                df_combined_all['PM2.5_ATM_ug/m3_a']-df_combined_all['PM2.5_ATM_ug/m3_b']
                 ).abs() < 5.0]
             df_filtered = df_filtered[((
                 (df_filtered['PM2.5_ATM_ug/m3_a'] - df_filtered['PM2.5_ATM_ug/m3_b']).abs()
@@ -888,6 +1132,14 @@ def combine_primary(args, csv_full_path):
             df_filtered['PM2.5_CF1_ug/m3_avg'] = df_filtered[['PM2.5_CF1_ug/m3_a','PM2.5_CF1_ug/m3_b']].mean(axis=1)
             df_filtered['PM10.0_CF1_ug/m3_avg'] = df_filtered[['PM10.0_CF1_ug/m3_a','PM10.0_CF1_ug/m3_b']].mean(axis=1)
             df_filtered['PM2.5_ATM_ug/m3_avg'] = df_filtered[['PM2.5_ATM_ug/m3_a','PM2.5_ATM_ug/m3_b']].mean(axis=1)
+            df_filtered['>=0.3um/dl_avg'] = df_filtered[['>=0.3um/dl_as','>=0.3um/dl_bs']].mean(axis=1)
+            df_filtered['>=0.5um/dl_avg'] = df_filtered[['>=0.5um/dl_as','>=0.5um/dl_bs']].mean(axis=1)
+            df_filtered['>=1.0um/dl_avg'] = df_filtered[['>=1.0um/dl_as','>=1.0um/dl_bs']].mean(axis=1)
+            df_filtered['>=2.5um/dl_avg'] = df_filtered[['>=2.5um/dl_as','>=2.5um/dl_bs']].mean(axis=1)
+            df_filtered['>=5.0um/dl_avg'] = df_filtered[['>=5.0um/dl_as','>=5.0um/dl_bs']].mean(axis=1)
+            df_filtered['>=10.0um/dl_avg'] = df_filtered[['>=10.0um/dl_as','>=10.0um/dl_bs']].mean(axis=1)
+            df_filtered['PM1.0_ATM_ug/m3_avg'] = df_filtered[['PM1.0_ATM_ug/m3_as','PM1.0_ATM_ug/m3_bs']].mean(axis=1)
+            df_filtered['PM10_ATM_ug/m3_avg'] = df_filtered[['PM10_ATM_ug/m3_as','PM10_ATM_ug/m3_bs']].mean(axis=1)
 
             # EXPERIMENTAL: Added for AQI calculation 
             # For clarity may move most of this to calc_aqi()
@@ -913,7 +1165,23 @@ def combine_primary(args, csv_full_path):
                 "PM1.0_CF1_ug/m3_b", 
                 "PM2.5_CF1_ug/m3_b",
                 "PM10.0_CF1_ug/m3_b",
-                "PM2.5_ATM_ug/m3_b"
+                "PM2.5_ATM_ug/m3_b",
+                ">=0.3um/dl_as",
+                ">=0.5um/dl_as",
+                ">=1.0um/dl_as",
+                ">=2.5um/dl_as",
+                ">=5.0um/dl_as",
+                ">=10.0um/dl_as",
+                "PM1.0_ATM_ug/m3_as",
+                "PM10_ATM_ug/m3_as",
+                ">=0.3um/dl_bs",
+                ">=0.5um/dl_bs",
+                ">=1.0um/dl_bs",
+                ">=2.5um/dl_bs",
+                ">=5.0um/dl_bs",
+                ">=10.0um/dl_bs",
+                "PM1.0_ATM_ug/m3_bs",
+                "PM10_ATM_ug/m3_bs"
                 ]
             df_filtered = df_filtered.drop(drop_list , 1)
 
@@ -923,6 +1191,14 @@ def combine_primary(args, csv_full_path):
             "PM2.5_CF1_ug/m3_avg": "PM2.5_CF1_ug/m3",
             "PM10.0_CF1_ug/m3_avg": "PM10.0_CF1_ug/m3",
             "PM2.5_ATM_ug/m3_avg": "PM2.5_ATM_ug/m3",
+            ">=0.3um/dl_avg": ">=0.3um/dl",
+            ">=0.5um/dl_avg": ">=0.5um/dl",
+            ">=1.0um/dl_avg": ">=1.0um/dl",
+            ">=2.5um/dl_avg": ">=2.5um/dl",
+            ">=5.0um/dl_avg": ">=5.0um/dl",
+            ">=10.0um/dl_avg": ">=10.0um/dl",
+            "PM1.0_ATM_ug/m3_avg": "PM1.0_ATM_ug/m3",
+            "PM10_ATM_ug/m3_avg": "PM10_ATM_ug/m3",
             "RSSI_dbm_a": "RSSI_dbm",
             "ADC_dbm_b": "ADC",
             "Pressure_hpa_b": "Pressure_hpa",
@@ -931,6 +1207,7 @@ def combine_primary(args, csv_full_path):
             "IAQ_b": "IAQ"
             })
             df_filtered = df_filtered.rename(columns=mapping)
+
             with open(csv_combined_filename_filt, "w") as reference:
                 status_message("writing combined_full_filt.csv file."
                                 "combine_primary()", "no"
@@ -939,10 +1216,6 @@ def combine_primary(args, csv_full_path):
                     reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
                     )
 
-            #print(df_combined_primary_a)
-            #print(df_combined_primary_b)
-            #df_combined_primary_ab = df_combined_primary_a.merge(df_combined_primary_b, how='left', left_on=['Sensor', 'DateTime_UTC'], right_on=['Sensor', 'DateTime_UTC'])
-            #df_combined_primary_ab = pd.merge(df_combined_primary_a, df_combined_primary_b, how='inner', on=['Sensor', 'DateTime_UTC'])
             with open(csv_combined_filename_ab, "w") as reference:
                 status_message("writing combined_full_ab.csv file."
                                 "combine_primary()", "no"
@@ -1291,8 +1564,10 @@ def summarize(local_tz, args, output_type,
         df3.rename(columns={"DateTime_UTC": datetime_col_name}, inplace=True)
         df3['Ipm25'] = df3['Ipm25'].astype(int)
         cols=([
-            'Sensor', datetime_col_name, 'PM1.0_CF1_ug/m3',
-            'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
+            'Sensor', datetime_col_name,
+            'PM1.0_ATM_ug/m3', 'PM2.5_ATM_ug/m3', 'PM10_ATM_ug/m3',
+            '>=0.3um/dl', '>=0.5um/dl', '>=1.0um/dl',
+            '>=2.5um/dl', '>=5.0um/dl', '>=10.0um/dl',
             'Ipm25','Lat', 'Lon', 'UptimeMinutes', "Free_Mem",
             'RSSI_dbm', 'Temperature_F', 'Humidity_%',
             "Pressure_hpa"
@@ -1300,8 +1575,10 @@ def summarize(local_tz, args, output_type,
         if args.darksky:
             df3 = df3.merge(df_dsky, how='left', on=datetime_col_name)
             cols=([
-                'Sensor', datetime_col_name, 'PM1.0_CF1_ug/m3',
-                'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
+                'Sensor', datetime_col_name,
+                'PM1.0_ATM_ug/m3', 'PM2.5_ATM_ug/m3', 'PM10_ATM_ug/m3',
+                '>=0.3um/dl', '>=0.5um/dl', '>=1.0um/dl',
+                '>=2.5um/dl', '>=5.0um/dl', '>=10.0um/dl',
                 'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'Free_Mem',
                 'RSSI_dbm', 'Temperature_F', 'Humidity_%', 'Pressure_hpa',
                 'WindDirection', 'WindSpeed'
@@ -1309,8 +1586,10 @@ def summarize(local_tz, args, output_type,
         elif sensor_name != " " and args.wind:
             df3 = df3.merge(df_wind, how='left', on=datetime_col_name)
             cols=([
-                'Sensor', datetime_col_name, 'PM1.0_CF1_ug/m3',
-                'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3', 'PM2.5_ATM_ug/m3',
+                'Sensor', datetime_col_name,
+                'PM1.0_ATM_ug/m3', 'PM2.5_ATM_ug/m3', 'PM10_ATM_ug/m3',
+                '>=0.3um/dl', '>=0.5um/dl', '>=1.0um/dl',
+                '>=2.5um/dl', '>=5.0um/dl', '>=10.0um/dl',
                 'Ipm25','Lat', 'Lon', 'UptimeMinutes', "Free_Mem",
                 'RSSI_dbm', 'Temperature_F', 'Humidity_%', "Pressure_hpa",
                 'WindDirection', 'WindSpeed'
@@ -1359,18 +1638,23 @@ def summarize(local_tz, args, output_type,
             worksheet.set_column('C:C', 18, format2)
             worksheet.set_column('D:D', 18, format2)
             worksheet.set_column('E:E', 18, format2)
-            worksheet.set_column('F:F', 18, format2)
-            worksheet.set_column('G:G', 7, format4)
-            worksheet.set_column('H:H', 9, format3)
-            worksheet.set_column('I:I', 9, format3)
-            worksheet.set_column('J:J', 15, format4)
-            worksheet.set_column('K:K', 10, format4)
-            worksheet.set_column('L:L', 9, format2)
-            worksheet.set_column('M:M', 14, format2)
-            worksheet.set_column('N:N', 11, format2)
-            worksheet.set_column('O:O', 13, format2)
-            worksheet.set_column('P:P', 14, format4)
-            worksheet.set_column('Q:Q', 11, format2)
+            worksheet.set_column('F:F', 12, format2)
+            worksheet.set_column('G:G', 12, format2)
+            worksheet.set_column('H:H', 12, format2)
+            worksheet.set_column('I:I', 12, format2)
+            worksheet.set_column('J:J', 12, format2)
+            worksheet.set_column('K:K', 12, format2)
+            worksheet.set_column('L:L', 9, format4)
+            worksheet.set_column('M:M', 9, format3)
+            worksheet.set_column('N:N', 9, format3)
+            worksheet.set_column('O:O', 15, format4)
+            worksheet.set_column('P:P', 10, format4)
+            worksheet.set_column('Q:Q', 9, format2)
+            worksheet.set_column('R:R', 14, format2)
+            worksheet.set_column('S:S', 12, format2)
+            worksheet.set_column('T:T', 13, format2)
+            worksheet.set_column('U:U', 14, format4)
+            worksheet.set_column('V:V', 11, format2)
             worksheet.freeze_panes(1, 0)
             writer_xlsx.save()
         status_message("completed processing output files.", "yes")
@@ -1386,7 +1670,7 @@ def summarize(local_tz, args, output_type,
             .describe().apply(lambda x: format(x, '.2f'))
             )
         df_summary_stats = (
-            df3['PM2.5_CF1_ug/m3']
+            df3['PM2.5_ATM_ug/m3']
             .describe().apply(lambda x: format(x, '.2f'))
             )
         df_stats = pd.concat(
@@ -1402,9 +1686,9 @@ def summarize(local_tz, args, output_type,
                     "Lon": "EAST_LONGITUDE(deg)",
                     "Lat": "NORTH_LATITUDE(deg)",
                     "Sensor": "ID(-)",
-                    "PM1.0_CF1_ug/m3": "PM1.0",
-                    "PM2.5_CF1_ug/m3": "PM2.5",
-                    "PM10.0_CF1_ug/m3": "PM10.0",
+                    "PM1.0_ATM_ug/m3": "PM1.0",
+                    "PM2.5_ATM_ug/m3": "PM2.5",
+                    "PM10_ATM_ug/m3": "PM10",
                     "Temperature_F": "Temperature",
                     "Humidity_%": "Relative Humidity",
                     "WindSpeed": "wind_magnitude(m/s)",
@@ -1412,7 +1696,7 @@ def summarize(local_tz, args, output_type,
                     })
                 cols = ([
                     'Timestamp', 'EAST_LONGITUDE(deg)', 'NORTH_LATITUDE(deg)',
-                    'ID(-)', 'PM1.0', 'PM2.5', 'PM10.0', 'Temperature',
+                    'ID(-)', 'PM1.0', 'PM2.5', 'PM10', 'Temperature',
                     'Relative Humidity', 'wind_magnitude(m/s)',
                     'wind_direction(deg)'
                     ])
@@ -1422,22 +1706,22 @@ def summarize(local_tz, args, output_type,
                     "Lon": "EAST_LONGITUDE(deg)",
                     "Lat": "NORTH_LATITUDE(deg)",
                     "Sensor": "ID(-)",
-                    "PM1.0_CF1_ug/m3": "PM1.0",
-                    "PM2.5_CF1_ug/m3": "PM2.5",
-                    "PM10.0_CF1_ug/m3": "PM10.0",
+                    "PM1.0_ATM_ug/m3": "PM1.0",
+                    "PM2.5_ATM_ug/m3": "PM2.5",
+                    "PM10_ATM_ug/m3": "PM10",
                     "Temperature_F": "Temperature",
                     "Humidity_%": "Relative Humidity"
                     })
                 cols = ([
                     'Timestamp', 'EAST_LONGITUDE(deg)', 'NORTH_LATITUDE(deg)',
-                    'ID(-)', 'PM1.0', 'PM2.5', 'PM10.0', 'Temperature',
+                    'ID(-)', 'PM1.0', 'PM2.5', 'PM10', 'Temperature',
                     'Relative Humidity'
                     ])
             df3 = df3.rename(columns=mapping)
-            df3 = df3.drop(["UptimeMinutes", "Free_Mem", "RSSI_dbm", "PM2.5_ATM_ug/m3"], axis=1)
+            df3 = df3.drop(["UptimeMinutes", "Free_Mem", "RSSI_dbm"], axis=1)
             df3 = df3[cols]
             df3 = df3.drop([
-                "PM1.0", "PM10.0",
+                "PM1.0", "PM10",
                 "Temperature", "Relative Humidity"
                 ], axis=1)
             df3 = df3[df3['EAST_LONGITUDE(deg)'].notnull()]
@@ -1476,12 +1760,16 @@ def df_plot(args, sensor_name, df):
         df2 = df.groupby('Sensor')
         df3 = df2.resample(args.summary).mean()
         df3 = df3.drop([
-            "Lon", "Lat", "PM1.0_CF1_ug/m3",
-            "PM10.0_CF1_ug/m3", "Temperature_F",
-            "Humidity_%"
+            "Lon", "Lat",
+            "PM1.0_ATM_ug/m3", "PM10_ATM_ug/m3",
+            '>=0.3um/dl', '>=0.5um/dl', '>=1.0um/dl',
+            '>=2.5um/dl', '>=5.0um/dl', '>=10.0um/dl',
+            "Temperature_F", "Humidity_%", "Pressure_hpa",
+            "UptimeMinutes", "Free_Mem", "RSSI_dbm",
+            "Ipm25"
             ],
             axis=1)
-        mapping = {"PM2.5_CF1_ug/m3": "PM2.5"}
+        mapping = {"PM2.5_ATM_ug/m3": "PM2.5"}
         df3 = df3.rename(columns=mapping)
         df3 = df3.reset_index()
         cols = ['Timestamp', 'Sensor', 'PM2.5']
