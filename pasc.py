@@ -59,7 +59,8 @@ pasc.py
              defaults defined in the argument defaults section.
 
    use with -h or --help for help.
-20210102
+20210328
+Todo: Combine reference isn't working
 """
 
 # ----------------------------START IMPORT SECTION-----------------------------
@@ -808,7 +809,7 @@ def combine_primary(args, csv_full_path):
                         dfsb['created_at'] = pd.to_datetime(dfsb['created_at'])
                         dfsb.set_index('created_at', inplace=True)
                         dfsb = dfsb.sort_index()
-                        dfsb['PM2.5_avg'] = dfsb['PM2.5_CF1_ug/m3'].rolling('24H').mean()
+                        dfsb['PM2.5_avg'] = dfsb['PM2.5_ATM_ug/m3'].rolling('24H').mean()
                         #dfsb['Ipm25'] = dfsb.apply(
                             #lambda x: calc_aqi(x['PM2.5_avg']),
                             #axis=1
@@ -1181,7 +1182,11 @@ def combine_primary(args, csv_full_path):
                 ">=5.0um/dl_bs",
                 ">=10.0um/dl_bs",
                 "PM1.0_ATM_ug/m3_bs",
-                "PM10_ATM_ug/m3_bs"
+                "PM10_ATM_ug/m3_bs",
+                "Lat_x", "Lon_x",
+                "Lat_y", "Lon_y",
+                "IAQ_b",
+                "entry_id_as_x", "entry_id_as_y"
                 ]
             df_filtered = df_filtered.drop(drop_list , 1)
 
@@ -1203,8 +1208,7 @@ def combine_primary(args, csv_full_path):
             "ADC_dbm_b": "ADC",
             "Pressure_hpa_b": "Pressure_hpa",
             "Temperature_F_a": "Temperature_F",
-            "Humidity_%_a": "Humidity_%",
-            "IAQ_b": "IAQ"
+            "Humidity_%_a": "Humidity_%"
             })
             df_filtered = df_filtered.rename(columns=mapping)
 
@@ -1397,9 +1401,11 @@ def combine_reference(args, csv_full_path,
                 )
             df_merged_ref.index = df_merged_ref.index.tz_localize(None)
             df_merged_ref.reset_index(inplace=True)
+            #print(df_merged_ref)
             cols=([
-                'Sensor', 'DateTime_UTC', 'PM1.0_ATM_ug/m3',
-                'PM2.5_ATM_ug/m3', 'PM10.0_ATM_ug/m3',
+                'Sensor', 'DateTime_UTC',
+                'PM1.0_CF1_ug/m3', 'PM2.5_CF1_ug/m3', 'PM10.0_CF1_ug/m3',
+                'PM1.0_ATM_ug/m3', 'PM2.5_ATM_ug/m3', 'PM10_ATM_ug/m3',
                 ">=0.3um/dl", ">=0.5um/dl", ">=1.0um/dl",
                 ">=2.5um/dl", ">=5.0um/dl", ">=10.0um/dl",
                 'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'RSSI_dbm', 
@@ -1420,7 +1426,6 @@ def combine_reference(args, csv_full_path,
                 axis=1
                 )
             df_merged_ref['Ipm25'] = df_AQI['Ipm25']
-            print(df_merged_ref)
             df_combined_primary = df_combined_primary.append(
                 df_merged_ref, sort=True
                 )
@@ -1448,6 +1453,8 @@ def combine_reference(args, csv_full_path,
                 'error! no reference csv files found in "%s". exiting.'
                 % args.directory
                 )
+        
+        print(df_combined_primary)
         return sensor_name, df_combined_primary
     except Exception as e:
         print(" ")
@@ -1563,8 +1570,15 @@ def summarize(local_tz, args, output_type,
         #df3 is used for the summary output files
         df3 = df3.reset_index()                  
         # replace with clean function +/- 5ug/m^3 and +/- 70% . filter PM2.5 between 0-1000
-        df3 = df3[df3['PM2.5_CF1_ug/m3'].between(0, 1000, inclusive=True)]  
+        #df3 = df3[df3['PM2.5_ATM_ug/m3'].between(0, 1000, inclusive=True)]  
         df3.rename(columns={"DateTime_UTC": datetime_col_name}, inplace=True)
+        #pd.set_option("display.max_rows", 100, "display.max_columns", None)
+        #print(df3)
+        #df3.to_csv(csv_full_path+"df3.csv",
+                #index=False,
+                #date_format='%Y-%m-%d %H:%M:%S'
+                #)
+        df3 = df3[df3['PM2.5_ATM_ug/m3'].notnull()]
         df3['Ipm25'] = df3['Ipm25'].astype(int)
         cols=([
             'Sensor', datetime_col_name,
@@ -1599,6 +1613,7 @@ def summarize(local_tz, args, output_type,
                 ])
         df3 = df3[cols]
         df_summary = df3.copy()
+        print(df_summary)
         status_message("completed summarizing data.", "yes")
         if "xl" in output_type:
             status_message(
