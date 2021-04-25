@@ -59,7 +59,7 @@ pasc.py
              defaults defined in the argument defaults section.
 
    use with -h or --help for help.
-20210328
+20210401
 Todo: Combine reference isn't working
 """
 
@@ -81,7 +81,7 @@ from math import radians, degrees, cos, sin, asin, atan2, sqrt, isnan
 from statistics import mean
 from datetime import datetime, timedelta
 import argparse
-from pytz import timezone, FixedOffset    # Included in Pandas package.
+from pytz import FixedOffset    # Included in Pandas package.
 import csv
 from collections import defaultdict
 import pandas as pd                       # Not included with base Python.
@@ -89,53 +89,14 @@ import numpy as np
 import matplotlib.pyplot as plt           # Not included with base Python.
 from prettytable import PrettyTable       # Not included with base Python.
 from tqdm import tqdm                     # Not included with base Python.
+import config
 # note need to also install xlsxwriter (python -m pip install xlsxwriter) but don't need to import as it will be installed
 # as a depedency of Pandas.
 
 # ----------------------------END IMPORT SECTION-------------------------------
 
-
-# -----------------------START USER VARIABLES SECTION--------------------------
-
-# Timezone: Change local time zone if needed. Web Search "PYTZ time zone list"
-# for a list of applicable codes.
-local_tz = timezone('US/Pacific')
-
-# Working Directory: Modify the user variable below to include the working
-# for your particular system.
-# This should be the path up to but not including the data directory.
-#
-# e.g., If the path up to the directory containing your data is
-# c:\data\purple_air and the sub-directory containing the data is sc20190901.
-#
-#    Then you would set the user_directory variable to 
-#     user_directory = r'c:\data\purple_air'.
-#    Set the data_directory variable to data_directory = user_directory.
-#    Specify the data directory on the command line.
-#       i.e., python pasc.py -d sc20190901
-#
-# Note the r is required before the string to denote it as a raw string
-# to avoid issues with the \ escape character.
-
-
-#user_directory = r' '
-matrix5 = r'd:\Users\Jim\OneDrive\Documents\House\PurpleAir'
-virtualbox = r'/media/sf_PurpleAir'
-servitor = r'c:\Users\Jim\OneDrive\Documents\House\PurpleAir'
-wsl_ubuntu_matrix5 = r'/mnt/d/Users/James/OneDrive/Documents/House/PurpleAir'
-wsl_ubuntu_servitor = r'/mnt/c/Users/Jim/OneDrive/Documents/House/PurpleAir'
-
-# Change this variable to point to the desired directory above. 
-data_directory = matrix5
-
-# Argument Defaults: Used in the get_arguments function.
-directory_default = "Test3"
-summary_default = "1H"
-output_default = ["csv", "retigo"]
-
-# ------------------------END USER VARIABLES SECTION---------------------------
-
-csv_root_path = data_directory + os.path.sep
+local_tz = config.local_tz
+csv_root_path = config.data_directory + os.path.sep
 
 def get_ref_station_coordinates():
     # Get AQMD regulatory reference station information from the 
@@ -615,7 +576,7 @@ def combine_primary(args, csv_full_path):
             combined_count = 0
             for root, dirs, files in os.walk(csv_full_path):
                 for name in files:
-                    if "Primary" in name.split():
+                    if "Primary" in name and "_a.csv" in name:
                         combined_size += getsize(join(root, name))
                         combined_count += 1
                 # don't walk files in subdirectories
@@ -749,7 +710,7 @@ def combine_primary(args, csv_full_path):
             combined_count = 0
             for root, dirs, files in os.walk(csv_full_path):
                 for name in files:
-                    if "Primary" in name.split():
+                    if "Primary" in name and "_b.csv" in name:
                         combined_size += getsize(join(root, name))
                         combined_count += 1
                 # don't walk files in subdirectories
@@ -760,10 +721,10 @@ def combine_primary(args, csv_full_path):
             with tqdm(
                     total=combined_count,
                     bar_format="{l_bar}{bar}" \
-                        "| b files processed: {n_fmt}/{total_fmt} |" \
+                        "| files processed: {n_fmt}/{total_fmt} |" \
                         " {postfix[0]} {postfix[1][remaining]:0,}/" \
                         "{postfix[2][total]:0,}",
-                    postfix=["b bytes processed:",
+                    postfix=["bytes processed:",
                         dict(remaining=0),
                         dict(total=0)
                         ]
@@ -899,7 +860,7 @@ def combine_primary(args, csv_full_path):
             combined_count = 0
             for root, dirs, files in os.walk(csv_full_path):
                 for name in files:
-                    if "Secondary" in name.split():
+                    if "Secondary" in name and "_a.csv" in name:
                         combined_size += getsize(join(root, name))
                         combined_count += 1
                 # don't walk files in subdirectories
@@ -1021,7 +982,7 @@ def combine_primary(args, csv_full_path):
             combined_count = 0
             for root, dirs, files in os.walk(csv_full_path):
                 for name in files:
-                    if "Secondary" in name.split():
+                    if "Secondary" in name and "_b.csv" in name:
                         combined_size += getsize(join(root, name))
                         combined_count += 1
                 # don't walk files in subdirectories
@@ -1212,35 +1173,35 @@ def combine_primary(args, csv_full_path):
             })
             df_filtered = df_filtered.rename(columns=mapping)
 
-            with open(csv_combined_filename_filt, "w") as reference:
-                status_message("writing combined_full_filt.csv file."
-                                "combine_primary()", "no"
-                                )
-                df_filtered.to_csv(
-                    reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
-                    )
+            #with open(csv_combined_filename_filt, "w") as reference:
+                #status_message("writing combined_full_filt.csv file."
+                                #"combine_primary()", "no"
+                                #)
+                #df_filtered.to_csv(
+                    #reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
+                    #)
 
-            with open(csv_combined_filename_ab, "w") as reference:
-                status_message("writing combined_full_ab.csv file."
-                                "combine_primary()", "no"
-                                )
-                df_combined_primary_ab.to_csv(
-                    reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
-                    )
-            with open(csv_combined_filename_a, "w") as reference:
-                status_message("writing combined_full_a.csv file."
-                                "combine_primary()", "no"
-                                )
-                df_combined_primary_a.to_csv(
-                    reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
-                    )
-            with open(csv_combined_filename_b, "w") as reference:
-                status_message("writing combined_full_b.csv file."
-                                "combine_primary()", "no"
-                                )
-                df_combined_primary_b.to_csv(
-                    reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
-                    )
+            #with open(csv_combined_filename_ab, "w") as reference:
+                #status_message("writing combined_full_ab.csv file."
+                                #"combine_primary()", "no"
+                                #)
+                #df_combined_primary_ab.to_csv(
+                    #reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
+                    #)
+            #with open(csv_combined_filename_a, "w") as reference:
+                #status_message("writing combined_full_a.csv file."
+                                #"combine_primary()", "no"
+                                #)
+                #df_combined_primary_a.to_csv(
+                    #reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
+                    #)
+            #with open(csv_combined_filename_b, "w") as reference:
+                #status_message("writing combined_full_b.csv file."
+                                #"combine_primary()", "no"
+                                #)
+                #df_combined_primary_b.to_csv(
+                    #reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
+                    #)
 
             if args.full and (not (args.reference or args.wind)):
                 # write the combined sensor data to a csv file if user selected
@@ -1258,7 +1219,7 @@ def combine_primary(args, csv_full_path):
                                    "yes"
                                    )
         else:
-            raise ValueError (' error: no primary csv files found in "%s".'
+            raise ValueError (' error: required csv files not found in "%s".'
                               ' try a different directory. exiting.'
                               % args.directory
                               )
@@ -1454,7 +1415,7 @@ def combine_reference(args, csv_full_path,
                 % args.directory
                 )
         
-        print(df_combined_primary)
+        #print(df_combined_primary)
         return sensor_name, df_combined_primary
     except Exception as e:
         print(" ")
@@ -1613,12 +1574,12 @@ def summarize(local_tz, args, output_type,
                 ])
         df3 = df3[cols]
         df_summary = df3.copy()
-        print(df_summary)
+        #print(df_summary)
         status_message("completed summarizing data.", "yes")
         if "xl" in output_type:
             status_message(
                     "processing output files."
-                    " this may take awhile due to Excel output type.",
+                    " this may take a while due to Excel output type.",
                     "no"
                     )
         else:
@@ -1745,7 +1706,10 @@ def summarize(local_tz, args, output_type,
             df3 = df3[df3['EAST_LONGITUDE(deg)'].notnull()]
             if args.wind or args.darksky:
                 df3 = df3[df3['wind_magnitude(m/s)'].notnull()]
-                # Convert from mph to m/s.
+                #df3['wind_magnitude(m/s)'] = (
+                    #df3['wind_magnitude(m/s)'].apply(lambda x: x / 2.23693629 if x.isnumeric() else x)
+                    #)
+               # Convert from mph to m/s.
                 df3['wind_magnitude(m/s)'] = (
                     df3['wind_magnitude(m/s)'] / 2.23693629
                     )
@@ -1924,9 +1888,9 @@ def bearing(lat1, lon1, lat2, lon2):
 # ---Main---
 args, output_type, csv_full_path = get_arguments(
         csv_root_path,
-        directory_default,
-        summary_default,
-        output_default
+        config.directory_default,
+        config.summary_default,
+        config.output_default
         )
 station_coordinates = get_ref_station_coordinates()
 if args.listref:
