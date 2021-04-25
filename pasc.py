@@ -192,7 +192,7 @@ def get_arguments(csv_root_path,
        prog='pasc',
        usage='%(prog)s [-d <data directory>] [-r] [-w] [-k]'
              '[-s <summary interval>] [-l] [-o output <type(s)>]'
-             '[-p] [-y <range>] [-f] [-a]',
+             '[-p] [-y <range>] [-f] [-a] [-t] [-i]',
        formatter_class=argparse.RawDescriptionHelpFormatter,
        )
    g=parser.add_argument_group(title='arguments',
@@ -207,7 +207,8 @@ def get_arguments(csv_root_path,
    -y, --yaxis  <Y-axis range>          optional.  integer to set plot Y-axis range. omitting this argument will plot with auto ranged Y-axis.
    -f, --full                           optional.  write combined sensor data to file combined_full.csv
    -a, --analyze                        optional.  analyze source.
-   -t, --stats                          optional.  show sensor stats.                                                                               ''')
+   -t, --stats                          optional.  show sensor stats.    
+   -i  --ignore                         optional.  ignore file overwrite warnings.                                                                           ''')
    g.add_argument('-d', '--directory',
                     type=str,
                     default=directory_default,
