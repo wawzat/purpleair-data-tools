@@ -78,8 +78,8 @@ Example: "python pasc.py -d Data1 -s 1H -o retigo -p -y 75" same as above and th
 use with -h or --help for help.  
 
 ## Notes for using reference files
-* PASC combines data from downloaded AQMD regulatory stations and station coordinate information into a single file.  
-* PASC looks for specifically named reference data csv's in the data folder, combines them and appends them to the combined primary data csv file.  
+* PASC combines downloaded regulatory station data and station coordinate information into a single file.  
+* The regulatory station data csv's must be located in the data folder and the files named as described below.    
 * **IMPORTANT** Ensure the reference data files are named per below and included in the same directory as the PA Primary csv files.  
 * Reference csv files must be named as follows:
   * Prefix for the sensor you want followed by _REF_ followed by the sensor type in lowercase.  
