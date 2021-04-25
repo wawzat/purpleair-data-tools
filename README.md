@@ -23,13 +23,13 @@ Install the following Python packages:
     required in lieu of "python -m pip install matplotlib".
 
 ## Basic instructions for installation and use:
-   1. Copy pasc.py, pasc_ref_stations.csv and config.py file to a folder on your computer.
+   1. Copy the pasc.py, pasc_ref_stations.csv and config.py files to a folder on your computer.
    2. Edit the pasc_ref_stations.csv file as needed for the regulatory stations you want to use if any.
    3. Edit the config.py file with details about your file storage locations.
-   4. Download historical primary and secondary PurpleAir sensor data for both the A & B channels to a folder on your computer.
-     1. See the pa-get-data git repo for a tool that facilitates downloading PurpleAir historical data.
+   4. Download historical primary and secondary PurpleAir sensor data for both the A & B channels to a folder on your computer.  
+     1. See the [pa-get-data](https://github.com/wawzat/pa-get-data) git repo for a tool that facilitates downloading PurpleAir historical data.
    5. Download reference data with a one day later range than the Purpleair
-       data to account for 8-hour time shift.
+       data to account for 8-hour time difference.
    6. Optionally download AQMD regulatory site reference data to the same folder
     as the PurpleAir sensor data. This is required to use the -r or -w options.
        See below for details on specific file naming conventions.
