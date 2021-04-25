@@ -1,7 +1,7 @@
 # purpleair-data-tools - pasc.py
-Tool for combining and optionally summaizing PurpleAir PAII historical data files.  
-Additional functionality allows for the inclusion of regulatory station and wind data.  
-Outputs to several different file formats. csv, Excel and formatted for RETIGO.  
+* Tool for combining and optionally summaizing PurpleAir PAII historical data files.  
+* Additional functionality allows for the inclusion of regulatory station and wind data.  
+* Outputs to several different file formats. csv, Excel and formatted for RETIGO.  
 
 Requires Python 3.6.8 or higher.
 
