@@ -28,13 +28,13 @@ Install the following required Python packages:
    3. Edit the config.py file with details about your file storage locations.
    4. Download historical primary and secondary PurpleAir sensor data for both the A & B channels to a folder on your computer.  
      1. See the [pa-get-data](https://github.com/wawzat/pa-get-data) git repo for a tool that facilitates downloading PurpleAir historical data.
-   5. Optionally download reference data with a one day later range than the Purpleair data to account for the 8-hour time difference. Download the AQMD regulatory site reference data to the same folder as the PurpleAir sensor data. This is required to use the -r or -w options.  
+   5. Optionally download regulatory site data with a one day later range than the Purpleair data to account for the 8-hour time difference. Download the regulatory sensor data to the same folder as the PurpleAir sensor data. This is required to use the -r or -w options.  
        See below for details on specific file naming conventions.  
    6. Optionally download darksky wind data to the same folder as the PurpleAir sensor data. This is required to use the -k option.  
        See below for detials on specific file naming conventions.  
-   7. Run python pasc.py from the command line with any optional flags and arguments as defined below.
+   7. Run python pasc.py from the command line with any optional flags and arguments as defined below.  
 
-   Selected combined and summarized files will be created in the same folder as the historical sensor data files.
+   Selected combined and summarized files will be created in the same folder as the historical sensor data files.  
 
 
 ## Description of operation:
