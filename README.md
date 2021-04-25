@@ -1,11 +1,11 @@
 # purpleair-data-tools - pasc.py
-* Tool for combining and optionally summaizing PurpleAir PAII historical data files.  
+* Tool for combining and optionally summarizing PurpleAir PAII historical data files.  
 * Additional functionality allows for the inclusion of regulatory station and wind data.  
 * Outputs to several different file formats. csv, Excel and formatted for RETIGO.  
 
 Requires Python 3.6.8 or higher.
 
-Install the following Python packages:  
+Install the following required Python packages:  
 * If python on your system aliases to python3  
   (python -m pip install [package], e.g., python -m pip install pandas)  
 
@@ -24,16 +24,15 @@ Install the following Python packages:
 
 ## Basic instructions for installation and use:
    1. Copy the pasc.py, pasc_ref_stations.csv and config.py files to a folder on your computer.
-   2. Edit the pasc_ref_stations.csv file as needed for the regulatory stations you want to use if any.
+   2. Optionally edit the pasc_ref_stations.csv file as needed for the regulatory stations you want to use if any.
    3. Edit the config.py file with details about your file storage locations.
    4. Download historical primary and secondary PurpleAir sensor data for both the A & B channels to a folder on your computer.  
      1. See the [pa-get-data](https://github.com/wawzat/pa-get-data) git repo for a tool that facilitates downloading PurpleAir historical data.
-   5. Download reference data with a one day later range than the Purpleair data to account for the 8-hour time difference.
-   6. Optionally download AQMD regulatory site reference data to the same folder as the PurpleAir sensor data. This is required to use the -r or -w options.  
+   5. Optionally download reference data with a one day later range than the Purpleair data to account for the 8-hour time difference. Download the AQMD regulatory site reference data to the same folder as the PurpleAir sensor data. This is required to use the -r or -w options.  
        See below for details on specific file naming conventions.  
-   7. Optionally download darksky wind data to the same folder as the PurpleAir sensor data. This is required to use the -k option.  
+   6. Optionally download darksky wind data to the same folder as the PurpleAir sensor data. This is required to use the -k option.  
        See below for detials on specific file naming conventions.  
-   8. Run python pasc.py from the command line with any optional flags and arguments as defined below.
+   7. Run python pasc.py from the command line with any optional flags and arguments as defined below.
 
    Selected combined and summarized files will be created in the same folder as the historical sensor data files.
 
