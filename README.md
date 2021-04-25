@@ -28,54 +28,39 @@ Install the following Python packages:
    3. Edit the config.py file with details about your file storage locations.
    4. Download historical primary and secondary PurpleAir sensor data for both the A & B channels to a folder on your computer.  
      1. See the [pa-get-data](https://github.com/wawzat/pa-get-data) git repo for a tool that facilitates downloading PurpleAir historical data.
-   5. Download reference data with a one day later range than the Purpleair
-       data to account for 8-hour time difference.
-   6. Optionally download AQMD regulatory site reference data to the same folder
-    as the PurpleAir sensor data. This is required to use the -r or -w options.
-       See below for details on specific file naming conventions.
-   7. Optionally download darksky wind data to the same folder as the PurpleAir
-    sensor data. This is required to use the -k option.
-       See below for detials on specific file naming conventions.
+   5. Download reference data with a one day later range than the Purpleair data to account for the 8-hour time difference.
+   6. Optionally download AQMD regulatory site reference data to the same folder as the PurpleAir sensor data. This is required to use the -r or -w options.  
+       See below for details on specific file naming conventions.  
+   7. Optionally download darksky wind data to the same folder as the PurpleAir sensor data. This is required to use the -k option.  
+       See below for detials on specific file naming conventions.  
    8. Run python pasc.py from the command line with any optional flags and arguments as defined below.
 
    Selected combined and summarized files will be created in the same folder as the historical sensor data files.
 
 
 ## Description of operation:
-    Iterates over all PurpleAir sensor csv files located in a user specified data directory.
-      and combines them into a files in various formats with re-ordered columns, UTC datetime conversion and sensor LAT/LON coordinates.
+  * Runnding pasc.py iterates over all downloaded PurpleAir sensor csv files located in a user specified data directory.
+and combines them into files of various formats with re-ordered columns, UTC datetime conversion, sensor names and sensor LAT/LON coordinates.
+  * AQS / ARB Reference sensor and/or darksky wind data may also be optionally included.  
+  * The combined data is optionally resampled by averaging the readings over a specified interval and saved as new summarized Excel and/or csv file(s) as selected by the user (see command line arguments below).
+  * The PM 2.5 AQI is calculated and included in the output files in the Ipm25 column.  
+  * The available output file formats are described below:  
+    * combined_full.csv. This file is optionaly created using the -f flag and combines the csv files into one file, adds a column with the Sensor Name and columns for Lat / Lon.  
 
-      AQS / ARB Reference sensor and/or darksky wind data may also be optionally included.
-         Note reference data functionality is a work in progress and limited to only specific stations at this time (Lake Elsinore and Norco) and only
-            one station at a time.
+    * combined_summarized_csv.csv. This file is optionally created using the -o argument. Data are summarized over the specified interval, Column order is changed, the timestamp is converted to Pacific Time (Standard or Daylight Savings adjustment is automatic based on the date of the timestamp).  
 
-    The combined data is resampled by averaging the readings over a specified interval and saved as new summarized Excel and/or csv file(s) as selected
-      by the user (see command line arguments below).
+    * combined_summarized_xl.xlsx. This file is optionally created using the -o argument. Similar to combined_summarized.csv but in Microsoft XLSX format.  
+       * Top row is frozen, column names are bolded. Column widths and cell formats are set. The code in the Excel section may be extended using Pandas 
+       to perform any number of analyses, summarization, grouping, calculated fields, PivotTable like operations, plotting (using XlsxWriter) etc.  
 
-    The PM 2.5 AQI is calculated and included in the output files in the Ipm25 column.
+       * combined_summarized_retigo.csv. This file is optionally created using the -o argument. Data are summarized over the specified interval. Timestamp is converted to the required UTC/ISO 8601 international standard for the defined local time zone, columns are reordered and renamed as needed for RETIGO input.  
 
- The available output file formats are described below:
+       * XXXX_station_merged.csv where XXXX is the prefix of the AQS / ARB reference station obtained from the csv filename.   
+       This file is optionally created by using the "-r" or -"w" flags.  
+       This file contains merged data from reference station files.   
+       IMPORTANT See the combine_reference() function comments for more details on how to properly name the reference files prior to using this option.  
 
-    combined_full.csv. This file is optionaly created using the -f flag and combines the csv files into one file, adds a column with the Sensor Name
-       and columns for Lat / Lon.
- 
-    combined_summarized_csv.csv. This file is optionally created using the -o argument. Data are summarized over the specified interval, Column order
-       is changed, the timestamp is converted to Pacific Time (Standard or Daylight Savings adjustment is automatic based on the date of the timestamp).
-
-    combined_summarized_xl.xlsx. This file is optionally created using the -o argument. Similar to combined_summarized.csv but in Microsoft XLSX format. 
-       Top row is frozen, column names are bolded. Column widths and cell formats are set. The code in the Excel section may be extended using Pandas 
-       to perform any number of analyses, summarization, grouping, calculated fields, PivotTable like operations, plotting (using XlsxWriter) etc.
-
-    combined_summarized_retigo.csv. This file is optionally created using the -o argument. Data are summarized over the specified interval. Timestamp is
-    converted to the required UTC/ISO 8601 international standard for the defined local time zone, columns are reordered and renamed as needed for RETIGO input.
-
-    XXXX_station_merged.csv where XXXX is the prefix of the AQS / ARB reference station obtained from the csv filename. 
-       This file is optionally created by using the "-r" or -"w" flags.
-       This file contains merged data from reference station files. 
-       IMPORTANT See the combine_reference() function comments for more details on how to properly name the reference files prior to using this option.
-
-
- Detailed instructions for use:
+# Detailed instructions for use:
 
  Run from command line 
 
@@ -99,18 +84,18 @@ Install the following Python packages:
    -or-: "python pasc.py" without one or more arguments will use the defaults defined in the argument defaults section.
    use with -h or --help for help.
 
-##  Notes for using reference files
-     Combines data from downloaded AQMD regulatory stations and station coordinate information into a single file
-     Looks for specifically named reference data csv's in the data folder, combines them and appends them to the combined primary data csv file
-     IMPORTANT Ensure the reference data files are named per below and included in the same directory as the PA Primary csv files.
-        Reference csv files must be named as follows:
-           prefix for the sensor you want followed by _REF_ followed by the sensor type in lowercase.
-           for appropriate prefixes to use (i.e., "LE" or "NORCO") look in pasc_ref_stations.csv. This is kludgy, it's a work in progress.
-           Sensor types:
-              25, wd, ws (correspond to PM2.5, Wind Direction and Wind Speed)
-           e.g. LE_REF_25.csv or NORCO_REF_wd.csv
-     Reference station coordinate and other information is included in the file "pasc_ref_stations.csv" which must be stored 
-        in the same folder as pasc.py. Modify "pasc_ref_stations.csv as required to add reference stations
-     Timestamps in the merged file are converted to UTC to be consistent with the combined Primary csv timestamps.
-     Reference station historical data from SCAQMD regulatory sites are not daylight savings corrected and are always in PST (UTC -8 hours). 
-        This is accounted for when converting to UTC (fixed 8-hour offset).
+## Notes for using reference files
+   Combines data from downloaded AQMD regulatory stations and station coordinate information into a single file
+   Looks for specifically named reference data csv's in the data folder, combines them and appends them to the combined primary data csv file
+   IMPORTANT Ensure the reference data files are named per below and included in the same directory as the PA Primary csv files.
+      Reference csv files must be named as follows:
+         prefix for the sensor you want followed by _REF_ followed by the sensor type in lowercase.
+         for appropriate prefixes to use (i.e., "LE" or "NORCO") look in pasc_ref_stations.csv. This is kludgy, it's a work in progress.
+         Sensor types:
+            25, wd, ws (correspond to PM2.5, Wind Direction and Wind Speed)
+         e.g. LE_REF_25.csv or NORCO_REF_wd.csv
+   Reference station coordinate and other information is included in the file "pasc_ref_stations.csv" which must be stored 
+      in the same folder as pasc.py. Modify "pasc_ref_stations.csv as required to add reference stations
+   Timestamps in the merged file are converted to UTC to be consistent with the combined Primary csv timestamps.
+   Reference station historical data from SCAQMD regulatory sites are not daylight savings corrected and are always in PST (UTC -8 hours). 
+      This is accounted for when converting to UTC (fixed 8-hour offset).
