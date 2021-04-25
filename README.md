@@ -44,18 +44,17 @@ Install the following Python packages:
   * The combined data is optionally resampled by averaging the readings over a specified interval and saved as new summarized Excel and/or csv file(s) as selected by the user (see command line arguments below).  
   * The PM 2.5 AQI is calculated and included in the output files in the Ipm25 column.  
   * The available output file formats are described below:  
-    * combined_full.csv. This file is optionaly created using the -f flag and combines the csv files into one file, adds a column with the Sensor Name and columns for Lat / Lon.  
-    * combined_summarized_csv.csv. This file is optionally created using the -o argument. Data are summarized over the specified interval, Column order is changed, the timestamp is converted to Pacific Time (Standard or Daylight Savings adjustment is automatic based on the date of the timestamp).  
-    * combined_summarized_xl.xlsx. This file is optionally created using the -o argument. Similar to combined_summarized.csv but in Microsoft XLSX format.  
+    * **combined_full.csv**. This file is optionaly created using the -f flag and combines the csv files into one file, adds a column with the sensor name and columns for Lat / Lon.  
+    * **combined_summarized_csv.csv**. This file is optionally created using the -o argument. Data are summarized over the specified interval, Column order is changed, the timestamp is converted to Pacific Time (Standard or Daylight Savings adjustment is automatic based on the date of the timestamp).  
+    * **combined_summarized_xl.xlsx**. This file is optionally created using the -o argument. Similar to combined_summarized.csv but in Microsoft XLSX format.  
        * Top row is frozen, column names are bolded. Column widths and cell formats are set. The code in the Excel section may be extended using Pandas 
        to perform any number of analyses, summarization, grouping, calculated fields, PivotTable like operations, plotting (using XlsxWriter) etc.  
 
-       * combined_summarized_retigo.csv. This file is optionally created using the -o argument. Data are summarized over the specified interval. Timestamp is converted to the required UTC/ISO 8601 international standard for the defined local time zone, columns are reordered and renamed as needed for RETIGO input.  
-
-       * XXXX_station_merged.csv where XXXX is the prefix of the AQS / ARB reference station obtained from the csv filename.   
-       This file is optionally created by using the "-r" or -"w" flags.  
-       This file contains merged data from reference station files.   
-       IMPORTANT See the combine_reference() function comments for more details on how to properly name the reference files prior to using this option.  
+    * **combined_summarized_retigo.csv**. This file is optionally created using the -o argument. Data are summarized over the specified interval. Timestamp is converted to the required UTC/ISO 8601 international standard for the defined local time zone, columns are reordered and renamed as needed for RETIGO input.  
+    * **XXXX_station_merged.csv** where XXXX is the prefix of the AQS / ARB reference station obtained from the csv filename.  
+      This file is optionally created by using the "-r" or -"w" flags.  
+      This file contains merged data from reference station files.  
+      IMPORTANT See the combine_reference() function comments for more details on how to properly name the reference files prior to using this option.  
 
 # Detailed instructions for use:
 
