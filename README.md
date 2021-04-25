@@ -3,15 +3,14 @@ Tool for combining and optionally summaizing PurpleAir PAII historical data file
 Additional functionality allows for the inclusion of regulatory station and wind data.  
 Outputs to several different file formats. csv, Excel and formatted for RETIGO.  
 
-Python installation requirements
-   Requires Python 3.6.8 or higher.
+Requires Python 3.6.8 or higher.
 
-   Install the following Python packages:
-    If python on your system aliases to python3
-      (python -m pip install [package], e.g., python -m pip install pandas)
+Install the following Python packages:  
+* If python on your system aliases to python3  
+  (python -m pip install [package], e.g., python -m pip install pandas)  
 
-    If python on your system aliases to python2.x
-      (python3 -m pip install [package], e.g., python3 -m pip install pandas)
+*  If python on your system aliases to python2.x  
+   (python3 -m pip install [package], e.g., python3 -m pip install pandas)
 
    ## Required Packages:
    * pandas
