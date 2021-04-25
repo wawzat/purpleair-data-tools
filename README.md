@@ -39,16 +39,13 @@ Install the following Python packages:
 
 
 ## Description of operation:
-  * Runnding pasc.py iterates over all downloaded PurpleAir sensor csv files located in a user specified data directory.
-and combines them into files of various formats with re-ordered columns, UTC datetime conversion, sensor names and sensor LAT/LON coordinates.
+  * Runnding pasc.py iterates over all downloaded PurpleAir sensor csv files located in a user specified data directory and combines them into files of various formats with re-ordered columns, UTC datetime conversion, sensor names and sensor LAT/LON coordinates.  
   * AQS / ARB Reference sensor and/or darksky wind data may also be optionally included.  
-  * The combined data is optionally resampled by averaging the readings over a specified interval and saved as new summarized Excel and/or csv file(s) as selected by the user (see command line arguments below).
+  * The combined data is optionally resampled by averaging the readings over a specified interval and saved as new summarized Excel and/or csv file(s) as selected by the user (see command line arguments below).  
   * The PM 2.5 AQI is calculated and included in the output files in the Ipm25 column.  
   * The available output file formats are described below:  
     * combined_full.csv. This file is optionaly created using the -f flag and combines the csv files into one file, adds a column with the Sensor Name and columns for Lat / Lon.  
-
     * combined_summarized_csv.csv. This file is optionally created using the -o argument. Data are summarized over the specified interval, Column order is changed, the timestamp is converted to Pacific Time (Standard or Daylight Savings adjustment is automatic based on the date of the timestamp).  
-
     * combined_summarized_xl.xlsx. This file is optionally created using the -o argument. Similar to combined_summarized.csv but in Microsoft XLSX format.  
        * Top row is frozen, column names are bolded. Column widths and cell formats are set. The code in the Excel section may be extended using Pandas 
        to perform any number of analyses, summarization, grouping, calculated fields, PivotTable like operations, plotting (using XlsxWriter) etc.  
