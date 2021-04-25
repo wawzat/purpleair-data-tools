@@ -81,17 +81,15 @@ Example: "python pasc.py -d Data1 -s 1H -o retigo -p -y 75" same as above and th
 use with -h or --help for help.  
 
 ## Notes for using reference files
-   Combines data from downloaded AQMD regulatory stations and station coordinate information into a single file
-   Looks for specifically named reference data csv's in the data folder, combines them and appends them to the combined primary data csv file
-   IMPORTANT Ensure the reference data files are named per below and included in the same directory as the PA Primary csv files.
-      Reference csv files must be named as follows:
-         prefix for the sensor you want followed by _REF_ followed by the sensor type in lowercase.
-         for appropriate prefixes to use (i.e., "LE" or "NORCO") look in pasc_ref_stations.csv. This is kludgy, it's a work in progress.
-         Sensor types:
-            25, wd, ws (correspond to PM2.5, Wind Direction and Wind Speed)
-         e.g. LE_REF_25.csv or NORCO_REF_wd.csv
-   Reference station coordinate and other information is included in the file "pasc_ref_stations.csv" which must be stored 
-      in the same folder as pasc.py. Modify "pasc_ref_stations.csv as required to add reference stations
-   Timestamps in the merged file are converted to UTC to be consistent with the combined Primary csv timestamps.
-   Reference station historical data from SCAQMD regulatory sites are not daylight savings corrected and are always in PST (UTC -8 hours). 
-      This is accounted for when converting to UTC (fixed 8-hour offset).
+* PASC combines data from downloaded AQMD regulatory stations and station coordinate information into a single file.  
+* PASC looks for specifically named reference data csv's in the data folder, combines them and appends them to the combined primary data csv file.  
+* **IMPORTANT** Ensure the reference data files are named per below and included in the same directory as the PA Primary csv files.  
+* Reference csv files must be named as follows:
+  * Prefix for the sensor you want followed by _REF_ followed by the sensor type in lowercase.  
+  * Sensor types:
+   * 25, wd, ws (correspond to PM2.5, Wind Direction and Wind Speed)  
+      e.g. LE_REF_25.csv or NORCO_REF_wd.csv  
+* Reference station coordinate and other information is included in the file "pasc_ref_stations.csv" which must be stored in the same folder as pasc.py. Modify "pasc_ref_stations.csv" as required to add reference stations.  
+* Timestamps in the merged file are converted to UTC to be consistent with the combined Primary csv timestamps.  
+* Reference station historical data from SCAQMD regulatory sites are not daylight savings corrected and are always in PST (UTC -8 hours).  
+   This is accounted for when converting to UTC (fixed 8-hour offset).  
