@@ -62,23 +62,23 @@ Run from command line
 
 Usage:  python pasc.py \[-d \<data directory\>\] \[-r\] \[-w\] \[-k\] \[-s \<summary interval\>\] \[-l\] \[-o \<output <type(s)\>\] \[-p\] \[-y \<yaxis scale (integer)\>\] \[-f\]    
 
-   -d argument enter existing "data directory" without path. e.g. "data5".
-   -r flag include AQS / ARB station reference data.
-   -w flag include AQS / ARB station reference data and include wind data in summary output.
-   -k flag include darksky wind data in summary output.
-   -s argument summary interval. e.g. "15min" or "1H" etc. 
-         valid values are 'W' (week), 'D" (day), "H" (hour), "min" or "T" (min), "S" (second).
-   -l flag display a list of reference stations. This flag supersedes other arguments and flags.
-   -o argument output type e.g. "csv", "xl", "retigo", "all", "none", "xl retigo", "csv xl".
-   -p flag generate a simple plot of PM2.5 vs time. Close the plot to end the script.
-   -y argument integer set yaxis range of the plot. e.g. -y 75
-   -f flag output the combined sensor data files to combined_full.csv
+* -d argument enter existing "data directory" without path. e.g. "data5".  
+* -r flag include AQS / ARB station reference data.  
+* -w flag include AQS / ARB station reference data and include wind data in summary output.  
+* -k flag include darksky wind data in summary output.  
+* -s argument summary interval. e.g. "15min" or "1H" etc.   
+      valid values are 'W' (week), 'D" (day), "H" (hour), "min" or "T" (min), "S" (second).
+* -l flag display a list of reference stations. This flag supersedes other arguments and flags.  
+* -o argument output type e.g. "csv", "xl", "retigo", "all", "none", "xl retigo", "csv xl".  
+* -p flag generate a simple plot of PM2.5 vs time. Close the plot to end the script.  
+* -y argument integer set yaxis range of the plot. e.g. -y 75  
+* -f flag output the combined sensor data files to combined_full.csv  
 
-   Example: "python pasc.py -d Data1 -s 1H -o retigo". Combines files in Data1, summarizes over 1-hour intervals and outputs a RETIGO csv file.
-   Example: "python pasc.py -d Data1 -s 1H -o retigo -p -y 75" same as above and then outputs a plot with a y-axis range of 75.
+>Example: "python pasc.py -d Data1 -s 1H -o retigo". Combines files in Data1, summarizes over 1-hour intervals and outputs a RETIGO csv file.
+Example: "python pasc.py -d Data1 -s 1H -o retigo -p -y 75" same as above and then outputs a plot with a y-axis range of 75.  
 
-   -or-: "python pasc.py" without one or more arguments will use the defaults defined in the argument defaults section.
-   use with -h or --help for help.
+-or- "python pasc.py" without one or more arguments will use the defaults defined in the argument defaults section.  
+use with -h or --help for help.  
 
 ## Notes for using reference files
    Combines data from downloaded AQMD regulatory stations and station coordinate information into a single file
