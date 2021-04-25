@@ -15,6 +15,7 @@ Python installation requirements
       matplotlib
       prettytable
       xlsxwriter
+      tqdm
 
     Note: on Linux systems "sudo apt-get install python-matplotlib" may be
     required in lieu of "python -m pip install matplotlib".
@@ -117,6 +118,7 @@ Python installation requirements
  Todo: get_arguments() add argparse choices to -s
  Todo: Test use of -w and -k arguments at the same time and correct any issues
  Todo: Handle errors when -k flag and no darksy file
+ Todo: Current parse_path code for finding coordinates is flawed if filename contains a period before the coordinates
 
  Changes:
     20190805: Changed "\\" to os.path.sep. Allows use on Linux and Windows without code modification.
@@ -133,6 +135,7 @@ Python installation requirements
               changing column names.
     20191101: Added Ipm25 column for "AQI". AQI in quotes since the offical midnight to midnight
               methodology is not used but a rolling 24 average is used instead.
+    20210327: AQI calc currently does not use rolling average.
 
 
   Notes for using reference files
