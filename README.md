@@ -64,8 +64,8 @@ Usage:  python pasc.py \[-d \<data directory\>\] \[-r\] \[-w\] \[-k\] \[-s \<sum
 
 * -d argument enter existing "data directory" without path. e.g. "data5".  
 * -r flag include AQS / ARB station reference data.  
-* -w flag include AQS / ARB station reference data and include wind data in summary output.  
-* -k flag include darksky wind data in summary output.  
+* -w flag include AQS / ARB station reference data and include wind data in output.  
+* -k flag include darksky wind data in output.  
 * -s argument summary interval. e.g. "15min" or "1H" etc.   
       valid values are 'W' (week), 'D" (day), "H" (hour), "min" or "T" (min), "S" (second).
 * -l flag display a list of reference stations. This flag supersedes other arguments and flags.  
@@ -77,7 +77,7 @@ Usage:  python pasc.py \[-d \<data directory\>\] \[-r\] \[-w\] \[-k\] \[-s \<sum
 >Example: "python pasc.py -d Data1 -s 1H -o retigo". Combines files in Data1, summarizes over 1-hour intervals and outputs a RETIGO csv file.
 Example: "python pasc.py -d Data1 -s 1H -o retigo -p -y 75" same as above and then outputs a plot with a y-axis range of 75.  
 
--or- "python pasc.py" without one or more arguments will use the defaults defined in the argument defaults section.  
+>-or- "python pasc.py" without one or more arguments will use the defaults defined in the argument defaults section.  
 use with -h or --help for help.  
 
 ## Notes for using reference files
