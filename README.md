@@ -58,9 +58,9 @@ Install the following Python packages:
 
 # Detailed instructions for use:
 
- Run from command line 
+Run from command line 
 
- Usage:  python pasc.py [-d <data directory>] [-r] [-w] [-k] [-s <summary interval>] [-l] [-o <output <type(s)>] [-p] [-y <yaxis scale (integer)>] [-f]
+Usage:  python pasc.py \[-d \<data directory\>\] \[-r\] \[-w\] \[-k\] \[-s \<summary interval\>\] \[-l\] \[-o \<output <type(s)\>\] \[-p\] \[-y \<yaxis scale (integer)\>\] \[-f\]    
 
    -d argument enter existing "data directory" without path. e.g. "data5".
    -r flag include AQS / ARB station reference data.
