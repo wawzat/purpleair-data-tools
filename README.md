@@ -1,6 +1,8 @@
 # purpleair-data-tools - pasc.py
 Tool for combining and optionally summaizing PurpleAir PAII historical data files.
+
 Additional functionality allows for the inclusion of regulatory station and wind data.
+
 Outputs to several different file formats. csv, Excel and formatted for RETIGO.
 
 Python installation requirements
@@ -25,11 +27,10 @@ Python installation requirements
 
 ## Basic instructions for installation and use:
    1. Copy pasc.py, pasc_ref_stations.csv and config.py file to a folder on your computer.
-    1. If you use git clone for this you can get updates using git pull.
    2. Edit the pasc_ref_stations.csv file as needed for the regulatory stations you want to use if any.
    3. Edit the config.py file with details about your file storage locations.
    4. Download historical primary and secondary PurpleAir sensor data for both the A & B channels to a folder on your computer.
-    1. See the pa-get-data git repo for a tool that facilitates downloading PurpleAir historical data.
+     1. See the pa-get-data git repo for a tool that facilitates downloading PurpleAir historical data.
    5. Download reference data with a one day later range than the Purpleair
        data to account for 8-hour time shift.
    6. Optionally download AQMD regulatory site reference data to the same folder
@@ -40,7 +41,7 @@ Python installation requirements
        See below for detials on specific file naming conventions.
    8. Run python pasc.py from the command line with any optional flags and arguments as defined below.
 
-    Selected combined and summarized files will be created in the same folder as the historical sensor data files.
+   Selected combined and summarized files will be created in the same folder as the historical sensor data files.
 
 
 ## Description of operation:
