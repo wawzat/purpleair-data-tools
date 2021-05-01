@@ -535,6 +535,13 @@ def calc_aqi(PM2_5):
         print("error in calc_aqi() function: %s") % e
 
 
+def calc_epa(PM2_5, RH):
+    #0-250 ug/m3 range (>250 may underestimate true PM2.5):
+    #PM2.5 (µg/m³) = 0.534 x PA(cf_1) - 0.0844 x RH + 5.604
+    PM2_5_epa = 0.534 * PM2_5 - 0.0844 * RH + 5.604
+    return PM2_5_epa
+
+
 def combine_primary(args, csv_full_path):
     try:
         # Combines data from the sensor CSV files, adds sensor coordinates and
@@ -1091,6 +1098,12 @@ def combine_primary(args, csv_full_path):
             df_filtered = df_filtered[((
                 (df_filtered['PM2.5_ATM_ug/m3_a'] - df_filtered['PM2.5_ATM_ug/m3_b']).abs()
                 ) / ((df_filtered['PM2.5_ATM_ug/m3_a'] + df_filtered['PM2.5_ATM_ug/m3_b'] + .00001) / 2)) < 0.7]
+            df_filtered = df_combined_all[(
+                df_combined_all['PM2.5_CF1_ug/m3_a']-df_combined_all['PM2.5_CF1_ug/m3_b']
+                ).abs() < 5.0]
+            df_filtered = df_filtered[((
+                (df_filtered['PM2.5_CF1_ug/m3_a'] - df_filtered['PM2.5_CF1_ug/m3_b']).abs()
+                ) / ((df_filtered['PM2.5_CF1_ug/m3_a'] + df_filtered['PM2.5_CF1_ug/m3_b'] + .00001) / 2)) < 0.7]
             df_filtered['PM1.0_CF1_ug/m3_avg'] = df_filtered[['PM1.0_CF1_ug/m3_a','PM1.0_CF1_ug/m3_b']].mean(axis=1)
             df_filtered['PM2.5_CF1_ug/m3_avg'] = df_filtered[['PM2.5_CF1_ug/m3_a','PM2.5_CF1_ug/m3_b']].mean(axis=1)
             df_filtered['PM10.0_CF1_ug/m3_avg'] = df_filtered[['PM10.0_CF1_ug/m3_a','PM10.0_CF1_ug/m3_b']].mean(axis=1)
@@ -1113,6 +1126,10 @@ def combine_primary(args, csv_full_path):
             #df_filtered['PM2.5_avg'] = df_filtered[''].rolling('24H').mean()
             df_filtered['Ipm25'] = df_filtered.apply(
                 lambda x: calc_aqi(x['PM2.5_ATM_ug/m3_avg']),
+                axis=1
+                )
+            df_filtered['pm25_epa'] = df_filtered.apply(
+                lambda x: calc_epa(x['PM2.5_CF1_ug/m3_avg'], x['Humidity_%_a']),
                 axis=1
                 )
             df_filtered.reset_index(inplace=True)
@@ -1370,7 +1387,7 @@ def combine_reference(args, csv_full_path,
                 'PM1.0_ATM_ug/m3', 'PM2.5_ATM_ug/m3', 'PM10_ATM_ug/m3',
                 ">=0.3um/dl", ">=0.5um/dl", ">=1.0um/dl",
                 ">=2.5um/dl", ">=5.0um/dl", ">=10.0um/dl",
-                'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'RSSI_dbm', 
+                'Ipm25', 'pm25_epa', 'Lat', 'Lon', 'UptimeMinutes', 'RSSI_dbm', 
                 'Temperature_F', 'Humidity_%', 'Pressure_hpa'
                 ])
             df_merged_ref = df_merged_ref.reindex(columns=cols, copy=False)
@@ -1387,12 +1404,18 @@ def combine_reference(args, csv_full_path,
                 lambda x: calc_aqi(x['PM2.5_avg']),
                 axis=1
                 )
+            df_merged_ref['pm25_epa'] = df_merged_ref.apply(
+                lambda x: calc_epa(x['PM2.5_CF1_ug/m3'], x['Humidity_%']),
+                axis=1
+                )
             df_merged_ref['Ipm25'] = df_AQI['Ipm25']
+            df_merged_ref['pm25_epa'] = df_merged_ref['pm25_epa']
             df_combined_primary = df_combined_primary.append(
                 df_merged_ref, sort=True
                 )
             df_combined_primary['Ipm25'] = df_combined_primary['Ipm25'].fillna(0)
             df_combined_primary['Ipm25'] = df_combined_primary['Ipm25'].astype(int)
+            df_combined_primary['pm25_epa'] = df_combined_primary['pm25_epa'].fillna(0)
             # Optionally write full unsummarized dataframe to disk
             if args.full:
                 with open(csv_combined_filename, "w") as reference:
@@ -1547,7 +1570,7 @@ def summarize(local_tz, args, output_type,
             'PM1.0_ATM_ug/m3', 'PM2.5_ATM_ug/m3', 'PM10_ATM_ug/m3',
             '>=0.3um/dl', '>=0.5um/dl', '>=1.0um/dl',
             '>=2.5um/dl', '>=5.0um/dl', '>=10.0um/dl',
-            'Ipm25','Lat', 'Lon', 'UptimeMinutes', "Free_Mem",
+            'Ipm25', 'pm25_epa', 'Lat', 'Lon', 'UptimeMinutes', "Free_Mem",
             'RSSI_dbm', 'Temperature_F', 'Humidity_%',
             "Pressure_hpa"
             ])
@@ -1558,7 +1581,7 @@ def summarize(local_tz, args, output_type,
                 'PM1.0_ATM_ug/m3', 'PM2.5_ATM_ug/m3', 'PM10_ATM_ug/m3',
                 '>=0.3um/dl', '>=0.5um/dl', '>=1.0um/dl',
                 '>=2.5um/dl', '>=5.0um/dl', '>=10.0um/dl',
-                'Ipm25','Lat', 'Lon', 'UptimeMinutes', 'Free_Mem',
+                'Ipm25', 'pm25_epa', 'Lat', 'Lon', 'UptimeMinutes', 'Free_Mem',
                 'RSSI_dbm', 'Temperature_F', 'Humidity_%', 'Pressure_hpa',
                 'WindDirection', 'WindSpeed'
                 ])
@@ -1569,7 +1592,7 @@ def summarize(local_tz, args, output_type,
                 'PM1.0_ATM_ug/m3', 'PM2.5_ATM_ug/m3', 'PM10_ATM_ug/m3',
                 '>=0.3um/dl', '>=0.5um/dl', '>=1.0um/dl',
                 '>=2.5um/dl', '>=5.0um/dl', '>=10.0um/dl',
-                'Ipm25','Lat', 'Lon', 'UptimeMinutes', "Free_Mem",
+                'Ipm25', 'pm25_epa', 'Lat', 'Lon', 'UptimeMinutes', "Free_Mem",
                 'RSSI_dbm', 'Temperature_F', 'Humidity_%', "Pressure_hpa",
                 'WindDirection', 'WindSpeed'
                 ])
@@ -1749,7 +1772,7 @@ def df_plot(args, sensor_name, df):
             '>=2.5um/dl', '>=5.0um/dl', '>=10.0um/dl',
             "Temperature_F", "Humidity_%", "Pressure_hpa",
             "UptimeMinutes", "Free_Mem", "RSSI_dbm",
-            "Ipm25"
+            "Ipm25", "pm25_epa"
             ],
             axis=1)
         mapping = {"PM2.5_ATM_ug/m3": "PM2.5"}
