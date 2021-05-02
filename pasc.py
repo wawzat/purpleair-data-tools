@@ -1128,10 +1128,10 @@ def combine_primary(args, csv_full_path):
                 lambda x: calc_aqi(x['PM2.5_ATM_ug/m3_avg']),
                 axis=1
                 )
-            df_filtered['pm25_epa'] = df_filtered.apply(
-                lambda x: calc_epa(x['PM2.5_CF1_ug/m3_avg'], x['Humidity_%_a']),
-                axis=1
-                )
+            #df_filtered['pm25_epa'] = df_filtered.apply(
+                #lambda x: calc_epa(x['PM2.5_CF1_ug/m3_avg'], x['Humidity_%_a']),
+                #axis=1
+                #)
             df_filtered.reset_index(inplace=True)
             #df_filtered = df_filtered.drop(['PM2.5_avg'] , 1)
             df_filtered.sort_values(['Sensor', 'DateTime_UTC'], ascending=[True, True], inplace=True)
@@ -1387,7 +1387,7 @@ def combine_reference(args, csv_full_path,
                 'PM1.0_ATM_ug/m3', 'PM2.5_ATM_ug/m3', 'PM10_ATM_ug/m3',
                 ">=0.3um/dl", ">=0.5um/dl", ">=1.0um/dl",
                 ">=2.5um/dl", ">=5.0um/dl", ">=10.0um/dl",
-                'Ipm25', 'pm25_epa', 'Lat', 'Lon', 'UptimeMinutes', 'RSSI_dbm', 
+                'Ipm25', 'Lat', 'Lon', 'UptimeMinutes', 'RSSI_dbm', 
                 'Temperature_F', 'Humidity_%', 'Pressure_hpa'
                 ])
             df_merged_ref = df_merged_ref.reindex(columns=cols, copy=False)
@@ -1404,18 +1404,18 @@ def combine_reference(args, csv_full_path,
                 lambda x: calc_aqi(x['PM2.5_avg']),
                 axis=1
                 )
-            df_merged_ref['pm25_epa'] = df_merged_ref.apply(
-                lambda x: calc_epa(x['PM2.5_CF1_ug/m3'], x['Humidity_%']),
-                axis=1
-                )
+            #df_merged_ref['pm25_epa'] = df_merged_ref.apply(
+                #lambda x: calc_epa(x['PM2.5_CF1_ug/m3'], x['Humidity_%']),
+                #axis=1
+                #)
             df_merged_ref['Ipm25'] = df_AQI['Ipm25']
-            df_merged_ref['pm25_epa'] = df_merged_ref['pm25_epa']
+            #df_merged_ref['pm25_epa'] = df_merged_ref['pm25_epa']
             df_combined_primary = df_combined_primary.append(
                 df_merged_ref, sort=True
                 )
             df_combined_primary['Ipm25'] = df_combined_primary['Ipm25'].fillna(0)
             df_combined_primary['Ipm25'] = df_combined_primary['Ipm25'].astype(int)
-            df_combined_primary['pm25_epa'] = df_combined_primary['pm25_epa'].fillna(0)
+            #df_combined_primary['pm25_epa'] = df_combined_primary['pm25_epa'].fillna(0)
             # Optionally write full unsummarized dataframe to disk
             if args.full:
                 with open(csv_combined_filename, "w") as reference:
@@ -1552,6 +1552,10 @@ def summarize(local_tz, args, output_type,
             df_wind = df_wind[[datetime_col_name, 'WindDirection', 'WindSpeed']]
         df2 = df.groupby('Sensor')
         df3 = df2.resample(args.summary).mean()
+        df3['pm25_epa'] = df3.apply(
+            lambda x: calc_epa(x['PM2.5_CF1_ug/m3'], x['Humidity_%']),
+            axis=1
+                )
         #df3 is used for the summary output files
         df3 = df3.reset_index()                  
         # replace with clean function +/- 5ug/m^3 and +/- 70% . filter PM2.5 between 0-1000
