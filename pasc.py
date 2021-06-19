@@ -59,8 +59,7 @@ pasc.py
              defaults defined in the argument defaults section.
 
    use with -h or --help for help.
-20210401
-Todo: Combine reference isn't working
+20210619
 """
 
 # ----------------------------START IMPORT SECTION-----------------------------
