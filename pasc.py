@@ -1199,13 +1199,13 @@ def combine_primary(args, csv_full_path):
                     #reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
                     #)
 
-            #with open(csv_combined_filename_ab, "w") as reference:
-                #status_message("writing combined_full_ab.csv file."
-                                #"combine_primary()", "no"
-                                #)
-                #df_combined_primary_ab.to_csv(
-                    #reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
-                    #)
+            with open(csv_combined_filename_ab, "w") as reference:
+                status_message("writing combined_full_ab.csv file."
+                                "combine_primary()", "no"
+                                )
+                df_combined_primary_ab.to_csv(
+                    reference, index=False, date_format='%Y-%m-%d %H:%M:%S', line_terminator='\n'
+                    )
             #with open(csv_combined_filename_a, "w") as reference:
                 #status_message("writing combined_full_a.csv file."
                                 #"combine_primary()", "no"
